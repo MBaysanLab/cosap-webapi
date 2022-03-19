@@ -8,11 +8,11 @@ services:
     environment:
       - POSTGRES_NAME=postgres
       - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:?err}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:?}
     restart: unless-stopped
   web:
     build: .
-    command: python manage.py runserver 0.0.0.0:8000
+    command: ["bash", "-l", "-c", "python manage.py runserver 0:8000"]
     volumes:
       - .:/app/webapi
     ports:
@@ -20,7 +20,10 @@ services:
     environment:
       - POSTGRES_NAME=postgres
       - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:?err}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:?}
+      - DJANGO_HOST=${DJANGO_HOST}
+      - DJANGO_SECRET=${DJANGO_SECRET:?}
+      - DJANGO_DEBUG=${DJANGO_DEBUG}
     depends_on:
       - db
     restart: unless-stopped

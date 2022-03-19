@@ -23,11 +23,10 @@ RUN git clone --recursive --single-branch --branch develop https://github.com/MB
 WORKDIR /app/cosap
 RUN conda install -c conda-forge mamba \
     && mamba env create -f environments/default_environment.yml
-RUN conda activate cosap \
-    && pip install . 
 RUN echo "conda activate cosap" >> ~/.bashrc
+RUN pip install . 
 
 # Install web API requirements
-RUN pip install Django==4.0 djangorestframework django-filter
+RUN pip install Django==4.0 djangorestframework django-filter psycopg2-binary
 
 WORKDIR /app/webapi
