@@ -1,5 +1,7 @@
 /data/
 
+migrations/
+
 ## Python Stuff
 ## Taken from https://github.com/github/gitignore/blob/main/Python.gitignore
 

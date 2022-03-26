@@ -41,6 +41,8 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
 
     'rest_framework',
+
+    'cosapweb.api',
 ]
 
 MIDDLEWARE = [
@@ -119,6 +121,9 @@ USE_I18N = True
 
 USE_TZ = True
 
+# Stored files
+
+MEDIA_ROOT = 'data'
 
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/4.0/howto/static-files/

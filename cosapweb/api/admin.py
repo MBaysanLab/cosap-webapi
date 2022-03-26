@@ -1,3 +1,8 @@
 from django.contrib import admin
 
-# Register your models here.
+from .models import Organization, Project, Sample, Report
+
+admin.site.register(Organization)
+admin.site.register(Project)
+admin.site.register(Sample)
+admin.site.register(Report)
