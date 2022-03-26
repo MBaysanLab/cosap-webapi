@@ -27,6 +27,6 @@ RUN echo "conda activate cosap" >> ~/.bashrc
 RUN pip install . 
 
 # Install web API requirements
-RUN pip install Django==4.0 djangorestframework django-filter psycopg2-binary
+RUN pip install Django==4.0 djangorestframework django-filter django-countries psycopg2-binary
 
 WORKDIR /app/webapi
