@@ -8,7 +8,7 @@ services:
     environment:
       - POSTGRES_NAME=postgres
       - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:?}
+      - POSTGRES_PASSWORD=postgres
     restart: unless-stopped
   web:
     build: .
@@ -18,12 +18,12 @@ services:
     ports:
       - "8000:8000"
     environment:
-      - POSTGRES_NAME=postgres
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:?}
-      - DJANGO_HOST=${DJANGO_HOST}
-      - DJANGO_SECRET=${DJANGO_SECRET:?}
-      - DJANGO_DEBUG=${DJANGO_DEBUG}
+      - COSAP_POSTGRES_NAME=postgres
+      - COSAP_POSTGRES_USER=postgres
+      - COSAP_POSTGRES_PASSWORD=postgres
+      - COSAP_DJANGO_HOST=${COSAP_DJANGO_HOST}
+      - COSAP_DJANGO_SECRET=${COSAP_DJANGO_SECRET:?}
+      - COSAP_DJANGO_DEBUG=${COSAP_DJANGO_DEBUG}
     depends_on:
       - db
     restart: unless-stopped

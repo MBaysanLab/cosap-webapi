@@ -22,12 +22,12 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/4.0/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = os.environ["DJANGO_SECRET"]
+SECRET_KEY = os.environ["COSAP_DJANGO_SECRET"]
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = os.environ.get("DJANGO_DEBUG") == "True"
+DEBUG = os.environ.get("COSAP_DJANGO_DEBUG") == "True"
 
-ALLOWED_HOSTS = ["localhost", os.environ.get("DJANGO_HOST", "*")]
+ALLOWED_HOSTS = ["localhost", os.environ.get("COSAP_DJANGO_HOST")]
 
 
 # Application definition
@@ -82,9 +82,9 @@ WSGI_APPLICATION = 'cosapweb.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': os.environ["POSTGRES_NAME"],
-        'USER': os.environ["POSTGRES_USER"],
-        'PASSWORD': os.environ["POSTGRES_PASSWORD"],
+        'NAME': os.environ.get("COSAP_POSTGRES_NAME", "postgres"),
+        'USER': os.environ.get("COSAP_POSTGRES_USER", "postgres"),
+        'PASSWORD': os.environ.get("COSAP_POSTGRES_PASSWORD", "postgres"),
         'HOST': 'db',
         'PORT': '5432',
     }
