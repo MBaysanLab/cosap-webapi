@@ -7,6 +7,7 @@ PROJECT_STATUS_CHOICES = [
 
 
 class Project(models.Model):
+    creator = models.ForeignKey(User, null=True, on_delete=models.SET_NULL)
     collaborators = models.ManyToManyField(User, related_name='projects')
     created_at = models.DateTimeField(auto_now_add=True)
     project_type = models.CharField(max_length=256)
