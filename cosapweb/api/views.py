@@ -1,7 +1,9 @@
+from django.contrib.auth import login, logout
 from django.contrib.auth.models import User
 from django.db.models import Q
 from django.db.models.query import QuerySet
-from rest_framework import mixins, permissions, viewsets
+from rest_framework import mixins, permissions, views, viewsets
+from rest_framework.response import Response
 
 from cosapweb.api import serializers
 from cosapweb.api.models import Project
@@ -23,6 +25,45 @@ class UserViewSet(mixins.RetrieveModelMixin,
     queryset = User.objects.all()
     lookup_field = "username"
     serializer_class = serializers.UserSerializer
+
+
+class RegisterViewSet(mixins.CreateModelMixin,
+                      viewsets.GenericViewSet):
+    """
+    View to register a user (also logs the user in).
+    """
+    permission_classes = [permissions.AllowAny]
+
+    queryset = User.objects.all()
+    serializer_class = serializers.RegistrationSerializer
+
+
+class LoginViewSet(mixins.CreateModelMixin,
+                   viewsets.GenericViewSet):
+    """
+    View to login.
+    """
+    permission_classes = [permissions.AllowAny]
+    serializer_class = serializers.LoginSerializer
+
+    # Override POST request handler
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        user = serializer.validated_data['user']
+        login(request, user)
+        return Response()
+
+
+class LogoutView(views.APIView):
+    """
+    View to logout.
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, format=None):
+        logout(request)
+        return Response()
 
 
 class ProjectViewSet(viewsets.ModelViewSet):

@@ -75,6 +75,14 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'cosapweb.wsgi.application'
 
+SESSION_ENGINE = "django.contrib.sessions.backends.signed_cookies"
+
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': [
+        'rest_framework.authentication.SessionAuthentication',
+    ],
+}
+
 
 # Database
 # https://docs.djangoproject.com/en/4.0/ref/settings/#databases
