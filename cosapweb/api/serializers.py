@@ -2,7 +2,7 @@ from django.contrib.auth import authenticate, login, password_validation
 from django.contrib.auth.models import User
 from rest_framework import serializers
 
-from cosapweb.api.models import Organization, Project
+from cosapweb.api.models import Organization, Project, Sample
 
 
 class OrganizationSerializer(serializers.ModelSerializer):
@@ -109,6 +109,30 @@ class RegistrationSerializer(serializers.ModelSerializer):
         return user
 
 
+class SampleSerializer(serializers.ModelSerializer):
+    user = serializers.SlugRelatedField(
+        read_only=True,
+        slug_field='username',
+    )
+
+    class Meta:
+        model = Sample
+        fields = ["id", "project", "user", "name",
+                  "sample_type", "sample_file", "uploaded_at"]
+        read_only_fields = ["uploaded_at"]
+
+    def validate(self, attrs):
+        # Users can add samples only to projects they have access to
+        user = self.context.get("request").user
+        project = attrs["project"]
+        if (project.creator != user
+                and project not in Project.objects.filter(collaborators=user)):
+            raise serializers.ValidationError(
+                {"project": "You don't have access to this project!"})
+
+        return attrs
+
+
 class ProjectSerializer(serializers.HyperlinkedModelSerializer):
     creator = serializers.SlugRelatedField(
         slug_field='username',
@@ -128,8 +152,8 @@ class ProjectSerializer(serializers.HyperlinkedModelSerializer):
 
     class Meta:
         model = Project
-        fields = ["url", "id", "name", "project_type", "status",
-                  "percentage", "creator", "created_at", "collaborators"]
+        fields = ["url", "id", "name", "project_type", "status", "percentage",
+                  "creator", "created_at", "collaborators", "samples"]
         read_only_fields = ["created_at", "status", "percentage"]
         extra_kwargs = {
             'collaborators': {'lookup_field': 'username'},

@@ -21,11 +21,11 @@ class Project(models.Model):
 
 class Sample(models.Model):
     user = models.ForeignKey(User, null=True, on_delete=models.SET_NULL)
-    project = models.ForeignKey(Project, on_delete=models.CASCADE)
+    project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name='samples')
     uploaded_at = models.DateTimeField(auto_now_add=True)
     name = models.CharField(max_length=256)
     sample_type = models.CharField(max_length=256)
-    sample_file = models.FileField(upload_to='samples/')
+    sample_file = models.FileField(upload_to='sample_files/')
 
     def __str__(self):
         return self.name

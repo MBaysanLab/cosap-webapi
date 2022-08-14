@@ -8,6 +8,7 @@ router.register(r'users', views.UserViewSet, basename="user")
 router.register(r'register', views.RegisterViewSet, basename="register")
 router.register(r'login', views.LoginViewSet, basename="login")
 router.register(r'projects', views.ProjectViewSet, basename="project")
+router.register(r'samples', views.SampleViewSet, basename="sample")
 
 urlpatterns = [
     path('', include(router.urls)),

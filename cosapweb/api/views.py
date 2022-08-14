@@ -6,7 +6,7 @@ from rest_framework import mixins, permissions, views, viewsets
 from rest_framework.response import Response
 
 from cosapweb.api import serializers
-from cosapweb.api.models import Project
+from cosapweb.api.models import Project, Sample
 from cosapweb.api.permissions import IsOwnerOrDoesNotExist, OnlyAdminToList
 
 
@@ -73,7 +73,7 @@ class ProjectViewSet(viewsets.ModelViewSet):
 
     permission_classes = [permissions.IsAuthenticated]
 
-    queryset = Project.objects.all()
+    queryset = Project.objects.order_by('-created_at')
     serializer_class = serializers.ProjectSerializer
 
     def get_queryset(self):
@@ -81,15 +81,41 @@ class ProjectViewSet(viewsets.ModelViewSet):
             Get the list of items for this view.
 
             Overridden to only return projects where the requesting user
-            is the creator of the project or a collaborator.
+            is the creator of the project or a collaborator in the project.
         """
         queryset = self.queryset
         if isinstance(queryset, QuerySet):
-            # Ensure queryset is re-evaluated on each request.
-            queryset = queryset.filter(
-                Q(creator__username=self.request.user.username) |
-                Q(collaborators__username=self.request.user.username))
+            user = self.request.user
+            queryset = queryset.filter(Q(creator=user) | Q(collaborators=user))
         return queryset
 
     def perform_create(self, serializer):
         serializer.save(creator=self.request.user, status="ON")
+
+
+class SampleViewSet(viewsets.ModelViewSet):
+    """
+    View to create, view, update and list samples.
+    """
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    queryset = Sample.objects.order_by('-uploaded_at')
+    serializer_class = serializers.SampleSerializer
+
+    def get_queryset(self):
+        """
+            Get the list of items for this view.
+
+            Overridden to only return samples for projects where the requesting 
+            user is the creator of the project or a collaborator in the project.
+        """
+        queryset = self.queryset
+        if isinstance(queryset, QuerySet):
+            user = self.request.user
+            queryset = queryset.filter(
+                Q(project__creator=user) | Q(project__collaborators=user))
+        return queryset
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
