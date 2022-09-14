@@ -86,7 +86,8 @@ class ProjectViewSet(viewsets.ModelViewSet):
         queryset = self.queryset
         if isinstance(queryset, QuerySet):
             user = self.request.user
-            queryset = queryset.filter(Q(creator=user) | Q(collaborators=user))
+            queryset = queryset.filter(
+                Q(creator=user) | Q(collaborators=user)).distinct()
         return queryset
 
     def perform_create(self, serializer):
@@ -113,8 +114,8 @@ class SampleViewSet(viewsets.ModelViewSet):
         queryset = self.queryset
         if isinstance(queryset, QuerySet):
             user = self.request.user
-            queryset = queryset.filter(
-                Q(project__creator=user) | Q(project__collaborators=user))
+            queryset = queryset.filter(Q(project__creator=user) | Q(
+                project__collaborators=user)).distinct()
         return queryset
 
     def perform_create(self, serializer):
