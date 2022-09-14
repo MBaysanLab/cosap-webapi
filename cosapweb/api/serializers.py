@@ -11,18 +11,15 @@ class OrganizationSerializer(serializers.ModelSerializer):
         fields = ["id", "name", "country", "address"]
 
 
-class UserSerializer(serializers.HyperlinkedModelSerializer):
+class UserSerializer(serializers.ModelSerializer):
     # TODO: A user should be allowed to remove or add a relationship to an org.
     organizations = OrganizationSerializer(many=True, read_only=True)
 
     class Meta:
         model = User
-        fields = ["url", "username", "first_name", "last_name", "email",
+        fields = ["username", "first_name", "last_name", "email",
                   "last_login", "date_joined", "organizations"]
         read_only_fields = ["last_login", "date_joined"]
-        extra_kwargs = {
-            'url': {'lookup_field': 'username'},
-        }
 
 
 class LoginSerializer(serializers.Serializer):
@@ -64,7 +61,6 @@ class RegistrationSerializer(serializers.ModelSerializer):
     """
     Serializer for user registration.
     """
-    email = serializers.EmailField(required=True)
     password = serializers.CharField(
         required=True,
         write_only=True,
@@ -133,7 +129,7 @@ class SampleSerializer(serializers.ModelSerializer):
         return attrs
 
 
-class ProjectSerializer(serializers.HyperlinkedModelSerializer):
+class ProjectSerializer(serializers.ModelSerializer):
     creator = serializers.SlugRelatedField(
         slug_field='username',
         read_only=True
@@ -152,7 +148,7 @@ class ProjectSerializer(serializers.HyperlinkedModelSerializer):
 
     class Meta:
         model = Project
-        fields = ["url", "id", "name", "project_type", "status", "percentage",
+        fields = ["id", "name", "project_type", "status", "percentage",
                   "creator", "created_at", "collaborators", "samples"]
         read_only_fields = ["created_at", "status", "percentage"]
         extra_kwargs = {
