@@ -77,7 +77,7 @@ class RegistrationSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = USER
-        fields = ['username', 'password', 'password_repeat',
+        fields = ['pk','username', 'password', 'password_repeat',
                   'first_name', 'last_name', 'email']
         extra_kwargs = {
             'first_name': {'required': True},

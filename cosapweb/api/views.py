@@ -1,10 +1,10 @@
 from django.contrib.auth import login, logout
 from django.contrib.auth import get_user_model
+from django.shortcuts import get_object_or_404
 from django.db.models import Q
 from django.db.models.query import QuerySet
 from rest_framework import mixins, permissions, views, viewsets
 from rest_framework.response import Response
-
 from cosapweb.api import serializers
 from cosapweb.api.models import Project, Sample, Action
 from cosapweb.api.permissions import IsOwnerOrDoesNotExist, OnlyAdminToList
@@ -25,9 +25,10 @@ class UserViewSet(mixins.RetrieveModelMixin,
     permission_classes = [permissions.IsAuthenticated,
                           IsOwnerOrDoesNotExist, OnlyAdminToList]
 
-    queryset = USER.objects.all()
-    lookup_field = "username"
+    lookup_field = "email"
     serializer_class = serializers.UserSerializer
+    queryset = USER.objects.all()
+
 
 
 class RegisterViewSet(mixins.CreateModelMixin,
@@ -124,7 +125,7 @@ class SampleViewSet(viewsets.ModelViewSet):
         serializer.save(user=self.request.user)
 
 class ActionViewSet(viewsets.ModelViewSet):
-    
+
     permission_classes = [permissions.IsAuthenticated]
     
     queryset = Action.objects.order_by('-created')
