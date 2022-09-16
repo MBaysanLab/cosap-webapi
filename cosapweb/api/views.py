@@ -1,14 +1,17 @@
 from django.contrib.auth import login, logout
-from django.contrib.auth.models import User
+from django.contrib.auth import get_user_model
 from django.db.models import Q
 from django.db.models.query import QuerySet
 from rest_framework import mixins, permissions, views, viewsets
 from rest_framework.response import Response
 
 from cosapweb.api import serializers
-from cosapweb.api.models import Project, Sample
+from cosapweb.api.models import Project, Sample, Action
 from cosapweb.api.permissions import IsOwnerOrDoesNotExist, OnlyAdminToList
 
+
+
+USER = get_user_model()
 
 class UserViewSet(mixins.RetrieveModelMixin,
                   mixins.UpdateModelMixin,
@@ -22,7 +25,7 @@ class UserViewSet(mixins.RetrieveModelMixin,
     permission_classes = [permissions.IsAuthenticated,
                           IsOwnerOrDoesNotExist, OnlyAdminToList]
 
-    queryset = User.objects.all()
+    queryset = USER.objects.all()
     lookup_field = "username"
     serializer_class = serializers.UserSerializer
 
@@ -34,7 +37,7 @@ class RegisterViewSet(mixins.CreateModelMixin,
     """
     permission_classes = [permissions.AllowAny]
 
-    queryset = User.objects.all()
+    queryset = USER.objects.all()
     serializer_class = serializers.RegistrationSerializer
 
 
@@ -119,3 +122,24 @@ class SampleViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)
+
+class ActionViewSet(viewsets.ModelViewSet):
+    
+    permission_classes = [permissions.IsAuthenticated]
+    
+    queryset = Action.objects.order_by('-created')
+    serializer_class = serializers.ActionSerializer
+
+    def get_queryset(self):
+        """
+            Get the list of items for this view.
+
+            Overridden to only return projects where the requesting user
+            is the creator of the project or a collaborator in the project.
+        """
+        queryset = self.queryset
+
+        if isinstance(queryset, QuerySet):
+            user = self.request.user
+            queryset = queryset.filter(Q(associated_user=user))
+        return queryset

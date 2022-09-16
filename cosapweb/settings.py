@@ -29,6 +29,11 @@ DEBUG = os.environ.get("COSAP_DJANGO_DEBUG") == "True"
 
 ALLOWED_HOSTS = ["localhost", os.environ.get("COSAP_DJANGO_HOST")]
 
+CORS_ALLOWED_ORIGINS = ["http://localhost:3000"]
+CORS_ALLOW_HEADERS = [
+    "x-csrftoken",
+]
+CORS_ALLOW_CREDENTIALS = True
 
 # Application definition
 
@@ -39,13 +44,13 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-
+    'corsheaders',
     'rest_framework',
-
     'cosapweb.api',
 ]
 
 MIDDLEWARE = [
+    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -83,6 +88,8 @@ REST_FRAMEWORK = {
     ],
 }
 
+#Substitute User Model
+AUTH_USER_MODEL = 'api.CustomUser'
 
 # Database
 # https://docs.djangoproject.com/en/4.0/ref/settings/#databases
