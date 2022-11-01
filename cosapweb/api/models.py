@@ -1,9 +1,13 @@
+from django.conf import settings
 from django.apps import apps
 from django.contrib.auth.models import AbstractUser, UserManager
 from django.contrib.auth.hashers import make_password
 from django.db import models
 from django_countries.fields import CountryField
 from django.contrib.auth import get_user_model
+from django.db.models.signals import post_save
+from django.dispatch import receiver
+from rest_framework.authtoken.models import Token
 
 PROJECT_STATUS_CHOICES = [
     ("CO", "completed"), ("ON", "ongoing"), ("UP", "file_upload"), ("CA", "cancelled")]
@@ -78,9 +82,9 @@ class Report(models.Model):
         return self.name
 
 
-class Organization(models.Model):
+class Affiliation(models.Model):
     associated_users = models.ManyToManyField(
-        USER, related_name='organizations')
+        USER, related_name='affiliations')
     name = models.CharField(max_length=256)
     country = CountryField(blank=True)
     address = models.CharField(blank=True, max_length=256)
@@ -101,3 +105,8 @@ class Action(models.Model):
     
     class Meta:
         ordering = ['created']
+    
+@receiver(post_save, sender=settings.AUTH_USER_MODEL)
+def create_auth_token(sender, instance=None, created=False, **kwargs):
+    if created:
+        Token.objects.create(user=instance)

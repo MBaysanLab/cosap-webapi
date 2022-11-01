@@ -5,10 +5,11 @@ from django.db.models import Q
 from django.db.models.query import QuerySet
 from rest_framework import mixins, permissions, views, viewsets
 from rest_framework.response import Response
+from rest_framework import status
 from cosapweb.api import serializers
 from cosapweb.api.models import Project, Sample, Action
 from cosapweb.api.permissions import IsOwnerOrDoesNotExist, OnlyAdminToList
-
+from rest_framework.authtoken.models import Token
 
 
 USER = get_user_model()
@@ -30,44 +31,34 @@ class UserViewSet(mixins.RetrieveModelMixin,
     queryset = USER.objects.all()
 
 
+class GetUserView(views.APIView):
+    """
+    View to authorize user with token.
+    """
+
+    authentication_classes = []
+    permission_classes = [permissions.AllowAny]
+
+    def get(self, request):
+        request_token = request.headers["Authorization"].split()[1]
+
+        if Token.objects.filter(key=request_token).exists():
+            user = Token.objects.get(key=request_token).user
+            return Response({"user":user.email}, status=status.HTTP_200_OK)
+
+        return Response(status=status.HTTP_401_UNAUTHORIZED)
+
 
 class RegisterViewSet(mixins.CreateModelMixin,
                       viewsets.GenericViewSet):
     """
     View to register a user (also logs the user in).
     """
+
     permission_classes = [permissions.AllowAny]
 
     queryset = USER.objects.all()
     serializer_class = serializers.RegistrationSerializer
-
-
-class LoginViewSet(mixins.CreateModelMixin,
-                   viewsets.GenericViewSet):
-    """
-    View to login.
-    """
-    permission_classes = [permissions.AllowAny]
-    serializer_class = serializers.LoginSerializer
-
-    # Override POST request handler
-    def create(self, request, *args, **kwargs):
-        serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        user = serializer.validated_data['user']
-        login(request, user)
-        return Response()
-
-
-class LogoutView(views.APIView):
-    """
-    View to logout.
-    """
-    permission_classes = [permissions.IsAuthenticated]
-
-    def post(self, request, format=None):
-        logout(request)
-        return Response()
 
 
 class ProjectViewSet(viewsets.ModelViewSet):

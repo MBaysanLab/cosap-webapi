@@ -2,25 +2,25 @@ from django.contrib.auth import authenticate, login, password_validation
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
 
-from cosapweb.api.models import Organization, Project, Sample, Action
+from cosapweb.api.models import Affiliation, Project, Sample, Action
 
 
 USER = get_user_model()
 
-class OrganizationSerializer(serializers.ModelSerializer):
+class AffiliationSerializer(serializers.ModelSerializer):
     class Meta:
-        model = Organization
+        model = Affiliation
         fields = ["id", "name", "country", "address"]
 
 
 class UserSerializer(serializers.ModelSerializer):
     # TODO: A user should be allowed to remove or add a relationship to an org.
-    organizations = OrganizationSerializer(many=True, read_only=True)
+    Affiliations = AffiliationSerializer(many=True, read_only=True)
 
     class Meta:
         model = USER
         fields = ["username", "first_name", "last_name", "email",
-                  "last_login", "date_joined", "organizations"]
+                  "last_login", "date_joined", "Affiliations"]
         read_only_fields = ["last_login", "date_joined"]
 
 class LoginSerializer(serializers.Serializer):
@@ -78,7 +78,7 @@ class RegistrationSerializer(serializers.ModelSerializer):
     class Meta:
         model = USER
         fields = ['pk','username', 'password', 'password_repeat',
-                  'first_name', 'last_name', 'email']
+                  'first_name', 'last_name', 'email', 'affiliations']
         extra_kwargs = {
             'first_name': {'required': True},
             'last_name': {'required': True}
