@@ -1,31 +1,49 @@
-from django.conf import settings
+import os
+
 from django.apps import apps
-from django.contrib.auth.models import AbstractUser, UserManager
-from django.contrib.auth.hashers import make_password
-from django.db import models
-from django_countries.fields import CountryField
+from django.conf import settings
 from django.contrib.auth import get_user_model
+from django.contrib.auth.hashers import make_password
+from django.contrib.auth.models import AbstractUser, UserManager
+from django.db import models
 from django.db.models.signals import post_save
 from django.dispatch import receiver
+from django_countries.fields import CountryField
 from rest_framework.authtoken.models import Token
 
 PROJECT_STATUS_CHOICES = [
-    ("CO", "completed"), ("ON", "ongoing"), ("UP", "file_upload"), ("CA", "cancelled")]
+    ("CO", "completed"),
+    ("ON", "ongoing"),
+    ("UP", "file_upload"),
+    ("CA", "cancelled"),
+]
 
 ACTION_TYPES = [
-    ("PC", "project_creation"), ("FU", "file_upload"), ("RC", "report_creation"),("SI", "sample_inspection")
+    ("PC", "project_creation"),
+    ("FU", "file_upload"),
+    ("RC", "report_creation"),
+    ("SI", "sample_inspection"),
 ]
+
 
 class CustomUserManager(UserManager):
     def create_user(self, username=None, email=None, password=None, **extra_fields):
-        return super(CustomUserManager, self).create_user(username, email, password, **extra_fields)
+        return super(CustomUserManager, self).create_user(
+            username, email, password, **extra_fields
+        )
 
-    def create_superuser(self, username=None, email=None, password=None, **extra_fields):
-        return super(CustomUserManager, self).create_superuser(username, email, password, **extra_fields)
+    def create_superuser(
+        self, username=None, email=None, password=None, **extra_fields
+    ):
+        return super(CustomUserManager, self).create_superuser(
+            username, email, password, **extra_fields
+        )
 
     def _create_user(self, username, email, password, **extra_fields):
         email = self.normalize_email(email)
-        GlobalUserModel = apps.get_model(self.model._meta.app_label, self.model._meta.object_name)
+        GlobalUserModel = apps.get_model(
+            self.model._meta.app_label, self.model._meta.object_name
+        )
         username = GlobalUserModel.normalize_username(username)
         user = self.model(username=username, email=email, **extra_fields)
         user.password = make_password(password)
@@ -34,38 +52,45 @@ class CustomUserManager(UserManager):
 
 
 class CustomUser(AbstractUser):
-    email = models.EmailField(('email address'), unique=True) # changes email to unique and blank to false
+    email = models.EmailField(
+        ("email address"), unique=True
+    )  # changes email to unique and blank to false
     username = models.CharField(max_length=50, null=True)
-    
+
     objects = CustomUserManager()
 
-    REQUIRED_FIELDS = [] 
-    USERNAME_FIELD = 'email'
+    REQUIRED_FIELDS = []
+    USERNAME_FIELD = "email"
 
-    
+
 USER = get_user_model()
 
 
 class Project(models.Model):
     creator = models.ForeignKey(USER, null=True, on_delete=models.SET_NULL)
-    collaborators = models.ManyToManyField(USER, related_name='projects')
+    collaborators = models.ManyToManyField(USER, related_name="projects")
     created_at = models.DateTimeField(auto_now_add=True)
     project_type = models.CharField(max_length=256)
     name = models.CharField(max_length=256)
     status = models.CharField(choices=PROJECT_STATUS_CHOICES, max_length=2)
     percentage = models.SmallIntegerField(default=0)
+    algorithms = models.JSONField(default={})
 
     def __str__(self):
         return self.name
 
 
-class Sample(models.Model):
+def user_directory_path(instance, filename):
+    return f"{instance.user.id}_{instance.user.email}/{instance.project.id}_{instance.project.name}/{filename}"
+
+
+class File(models.Model):
     user = models.ForeignKey(USER, null=True, on_delete=models.SET_NULL)
-    project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name='samples')
+    project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name="files")
     uploaded_at = models.DateTimeField(auto_now_add=True)
     name = models.CharField(max_length=256)
-    sample_type = models.CharField(max_length=256)
-    sample_file = models.FileField(upload_to='sample_files/')
+    file_type = models.CharField(max_length=256)
+    file = models.FileField(upload_to=user_directory_path)
 
     def __str__(self):
         return self.name
@@ -83,8 +108,7 @@ class Report(models.Model):
 
 
 class Affiliation(models.Model):
-    associated_users = models.ManyToManyField(
-        USER, related_name='affiliations')
+    associated_users = models.ManyToManyField(USER, related_name="affiliations")
     name = models.CharField(max_length=256)
     country = CountryField(blank=True)
     address = models.CharField(blank=True, max_length=256)
@@ -95,18 +119,34 @@ class Affiliation(models.Model):
 
 class Action(models.Model):
     associated_user = models.ForeignKey(
-        USER, blank=True, null=True, on_delete=models.CASCADE, related_name='actions')
+        USER, blank=True, null=True, on_delete=models.CASCADE, related_name="actions"
+    )
     action_type = models.CharField(choices=ACTION_TYPES, max_length=2)
     action_detail = models.CharField(max_length=256)
     created = models.DateTimeField(auto_now=True)
 
     def __str__(self):
         return f"{self.action_type}_{self.action_detail}"
-    
+
     class Meta:
-        ordering = ['created']
-    
+        ordering = ["created"]
+
+
 @receiver(post_save, sender=settings.AUTH_USER_MODEL)
 def create_auth_token(sender, instance=None, created=False, **kwargs):
+    """
+    Creates auth token when a user is created.
+    """
     if created:
         Token.objects.create(user=instance)
+
+
+@receiver(models.signals.post_delete, sender=File)
+def auto_delete_file_on_delete(sender, instance, **kwargs):
+    """
+    Deletes file from filesystem
+    when corresponding `File` object is deleted.
+    """
+    if instance.file:
+        if os.path.isfile(instance.file.path):
+            os.remove(instance.file.path)

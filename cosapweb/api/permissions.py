@@ -9,13 +9,13 @@ class OnlyAdminToList(permissions.BasePermission):
     """
 
     def has_permission(self, request, view):
-        return view.action != 'list' or request.user and request.user.is_staff
+        return view.action != "list" or request.user and request.user.is_staff
 
 
 class IsOwnerOrDoesNotExist(permissions.BasePermission):
     """
-    Custom permission that allows the user to see only the information they 
-    have access to. If a user tries to access something else, this will raise 
+    Custom permission that allows the user to see only the information they
+    have access to. If a user tries to access something else, this will raise
     an Http404 exception.
     Admin users are allowed access regardless.
     """
