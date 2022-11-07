@@ -33,7 +33,7 @@ This command will build the container image and run the containers in detached m
 
 You might also need to update the database structure after the containers are started:
 
-    docker compose exec web bash -l -c "python manage.py makemigrations & python manage.py migrate"
+    docker compose exec web bash -l -c "python manage.py makemigrations && python manage.py migrate"
 
 #### The development server should now be accessible at [http://localhost:8000](http://localhost:8000).
 

@@ -12,18 +12,28 @@ services:
     restart: unless-stopped
   web:
     build: .
-    command: ["bash", "-l", "-c", "python manage.py runserver 0:8000"]
+    command: ["bash", "-l", "-c", "python manage.py wait_for_db && python manage.py runserver 0:8000"]
     volumes:
       - .:/app/webapi
     ports:
       - "8000:8000"
-    environment:
-      - COSAP_POSTGRES_NAME=postgres
-      - COSAP_POSTGRES_USER=postgres
-      - COSAP_POSTGRES_PASSWORD=postgres
-      - COSAP_DJANGO_HOST=${COSAP_DJANGO_HOST}
-      - COSAP_DJANGO_SECRET=${COSAP_DJANGO_SECRET:?}
-      - COSAP_DJANGO_DEBUG=${COSAP_DJANGO_DEBUG}
+    env_file:
+      - .env.dev
     depends_on:
       - db
     restart: unless-stopped
+  redis:
+    image: redis
+  celery:
+    restart: unless-stopped
+    build:
+      context: .
+    command: ["bash", "-l", "-c", "celery -A cosapweb worker -l INFO"]
+    volumes:
+      - .:/app/webapi
+    env_file:
+      - .env.dev
+    depends_on:
+      - db
+      - redis
+      - web
