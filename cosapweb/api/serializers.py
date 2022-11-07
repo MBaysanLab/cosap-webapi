@@ -147,6 +147,7 @@ class FileSerializer(serializers.ModelSerializer):
 
 class ProjectSerializer(serializers.ModelSerializer):
     creator = serializers.SlugRelatedField(slug_field="email", read_only=True)
+
     collaborators = serializers.SlugRelatedField(
         many=True, slug_field="email", queryset=USER.objects.all()
     )
@@ -159,6 +160,7 @@ class ProjectSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Project
+
         fields = [
             "id",
             "name",
