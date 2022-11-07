@@ -8,6 +8,7 @@ from rest_framework import mixins, permissions, status, viewsets
 from rest_framework.authtoken.models import Token
 from rest_framework.authtoken.views import ObtainAuthToken
 from rest_framework.response import Response
+from rest_framework.decorators import api_view
 
 from cosapweb.api import serializers
 from cosapweb.api.models import Action, File, Project
@@ -121,12 +122,6 @@ class FileViewSet(viewsets.ModelViewSet):
     queryset = File.objects.order_by("-uploaded_at")
     serializer_class = serializers.FileSerializer
 
-    # def retrieve(self, request, *args, **kwargs):
-    #     pass
-
-    # def create(self, request, *args, **kwargs):
-    #     print(request.FILES)
-
     def get_queryset(self):
         """
         Get the list of items for this view.
@@ -166,3 +161,9 @@ class ActionViewSet(viewsets.ModelViewSet):
             user = self.request.user
             queryset = queryset.filter(Q(associated_user=user))
         return queryset
+
+
+@api_view(['GET'])
+def get_project_details(request):
+    
+    return Response({"message": "Hello, world!"})
