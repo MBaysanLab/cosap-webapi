@@ -84,6 +84,16 @@ class RegisterViewSet(mixins.CreateModelMixin, viewsets.GenericViewSet):
     queryset = USER.objects.all()
     serializer_class = serializers.RegistrationSerializer
 
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+
+        user = USER.objects.get(id=serializer.instance.id)
+        
+        token = Token.objects.get(user=user)
+        return Response({"token":token.key})
+
 
 class ProjectViewSet(viewsets.ModelViewSet):
     """
