@@ -159,6 +159,8 @@ cython_debug/
 !.vscode/extensions.json
 !.vscode/*.code-snippets
 
+# Env
+env.*
 
 ### Redis ###
 # Ignore redis binary dump (dump.rdb) files
