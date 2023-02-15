@@ -1,8 +1,9 @@
-from django.contrib.auth import (authenticate, get_user_model, password_validation)
+from django.contrib.auth import (authenticate, get_user_model,
+                                 password_validation)
 from rest_framework import serializers
+from rest_framework.authtoken.models import Token
 
 from cosapweb.api.models import Action, Affiliation, File, Project
-from rest_framework.authtoken.models import Token
 
 USER = get_user_model()
 
@@ -56,7 +57,7 @@ class RegistrationSerializer(serializers.ModelSerializer):
         extra_kwargs = {
             "first_name": {"required": True},
             "last_name": {"required": True},
-            "affiliations": {"required": False}
+            "affiliations": {"required": False},
         }
 
     def create(self, data):
@@ -67,9 +68,9 @@ class RegistrationSerializer(serializers.ModelSerializer):
             first_name=data["first_name"],
             last_name=data["last_name"],
             email=data["email"],
-            password=data["password"]
+            password=data["password"],
         )
-        
+
         return user
 
 
@@ -88,7 +89,7 @@ class FileSerializer(serializers.ModelSerializer):
         # Users can add samples only to projects they have access to
         user = self.context.get("request").user
         project = attrs["project"]
-        if project.creator != user and project not in Project.objects.filter(
+        if project.user != user and project not in Project.objects.filter(
             collaborators=user
         ):
             raise serializers.ValidationError(
@@ -99,7 +100,7 @@ class FileSerializer(serializers.ModelSerializer):
 
 
 class ProjectSerializer(serializers.ModelSerializer):
-    creator = serializers.SlugRelatedField(slug_field="email", read_only=True)
+    user = serializers.SlugRelatedField(slug_field="email", read_only=True)
     collaborators = serializers.SlugRelatedField(
         many=True, slug_field="email", queryset=USER.objects.all()
     )
@@ -117,14 +118,14 @@ class ProjectSerializer(serializers.ModelSerializer):
             "name",
             "project_type",
             "status",
-            "percentage",
-            "creator",
+            "progress",
+            "user",
             "created_at",
             "collaborators",
             "files",
             "algorithms",
         ]
-        read_only_fields = ["created_at", "status", "percentage"]
+        read_only_fields = ["created_at", "status", "progress"]
 
 
 class ActionSerializer(serializers.ModelSerializer):
@@ -135,12 +136,12 @@ class ActionSerializer(serializers.ModelSerializer):
     )
     action_type = serializers.SerializerMethodField()
     action_detail = serializers.CharField(max_length=256)
-    created = serializers.DateTimeField()
+    created_at = serializers.DateTimeField()
 
     def get_action_type(self, obj):
         return obj.get_action_type_display()
 
     class Meta:
         model = Action
-        fields = ["associated_user", "action_type", "action_detail", "created"]
-        read_only_fields = ["associated_user", "action_type", "created"]
+        fields = ["id", "associated_user", "action_type", "action_detail", "created_at"]
+        read_only_fields = ["associated_user", "action_type", "created_at"]

@@ -16,17 +16,8 @@ ENV PATH="/app/miniconda/bin:${PATH}"
 RUN echo export PATH="/app/miniconda/bin:${PATH}" >> ~/.bashrc && echo ". ~/.bashrc" >> ~/.bash_profile
 RUN conda init bash
 
-# Install CoSAP
-WORKDIR /app
-RUN git clone --recursive --single-branch --branch develop https://github.com/MBaysanLab/cosap.git
-
-WORKDIR /app/cosap
-RUN conda install -c conda-forge mamba \
-    && mamba env create -f environments/default_environment.yml
-RUN echo "conda activate cosap" >> ~/.bashrc
-RUN pip install . 
 
 # Install web API requirements
 RUN pip install Django==4.0 djangorestframework django-filter django-countries psycopg2-binary django-cors-headers "celery[redis]"
 
-WORKDIR /app/webapi
+WORKDIR /webapi
