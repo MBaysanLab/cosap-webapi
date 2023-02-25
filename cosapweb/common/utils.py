@@ -1,4 +1,6 @@
 from ..celery import celery_app
+from django.conf import settings
+import os
 
 def run_parse_project_data(path):
     """
@@ -14,3 +16,9 @@ def run_parse_project_data(path):
 
     return project_data
 
+def submit_cosap_job():
+    pass
+
+def get_user_dir(user):
+    user_path = f"{user.id}_{user.email}"
+    return os.path.join(settings.MEDIA_ROOT, user_path)

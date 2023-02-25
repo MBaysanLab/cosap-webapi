@@ -1,15 +1,12 @@
 import os
 
 from django.apps import apps
-from django.conf import settings
+
 from django.contrib.auth import get_user_model
 from django.contrib.auth.hashers import make_password
 from django.contrib.auth.models import AbstractUser, UserManager
 from django.db import models
-from django.db.models.signals import post_delete, post_save
-from django.dispatch import receiver
 from django_countries.fields import CountryField
-from rest_framework.authtoken.models import Token
 
 
 class CustomUserManager(UserManager):
@@ -79,10 +76,46 @@ class Project(models.Model):
     def __str__(self):
         return self.name
 
-
 def user_directory_path(instance, filename):
     return f"{instance.user.id}_{instance.user.email}/{instance.project.id}_{instance.project.name}/{filename}"
 
+class ProjectResult(models.Model):
+    project = models.ForeignKey(Project, on_delete=models.CASCADE)
+    mapped_reads = models.FloatField()
+    mean_coverage = models.FloatField()
+    number_of_variants = models.IntegerField()
+    number_of_significant_variants = models.IntegerField()
+    number_of_vus = models.IntegerField()
+
+class Variant(models.Model):
+    location = models.CharField(max_length=256)
+    ref = models.CharField(max_length=256)
+    alt = models.CharField(max_length=256)
+    function = models.CharField(max_length=256, null=True)
+    gene_symbol = models.CharField(max_length=256, null=True)
+    consequence = models.CharField(max_length=256, null=True)
+    coding_consequece = models.CharField(max_length=256, null=True)
+    ens_gene = models.CharField(max_length=256, null=True)
+    feature = models.CharField(max_length=256, null=True)
+    hgvsc = models.CharField(max_length=256, null=True)
+    classification = models.CharField(max_length=256, null=True)
+    gnomad_af = models.FloatField(null=True)
+    aa_change = models.CharField(max_length=256, null=True)
+    rs_id = models.CharField(max_length=256, null=True)
+    sift_score = models.FloatField(null=True)
+    polyphen_score = models.FloatField(null=True)
+    cadd_score = models.FloatField(null=True)
+    interpro_domain = models.CharField(max_length=256, null=True)
+    clinical_significance = models.CharField(max_length=256, null=True)
+    cosmic_id = models.CharField(max_length=256, null=True)
+    clinvar_classification = models.CharField(max_length=256, null=True)
+    evidence = models.CharField(max_length=256, null=True)
+    orphanet_info = models.CharField(max_length=256, null=True)
+    other_info = models.CharField(max_length=256, null=True)
+
+class ProjectVariants(models):
+    project = models.ForeignKey(Project, null=True, on_delete=models.SET_NULL)
+    variant = models.ForeignKey(Variant, on_delete=models.CASCADE)
 
 class File(models.Model):
 
@@ -161,43 +194,3 @@ class Action(models.Model):
 
     class Meta:
         ordering = ["created_at"]
-
-
-@receiver(post_save, sender=settings.AUTH_USER_MODEL)
-def create_auth_token(sender, instance=None, created=False, **kwargs):
-    """
-    Creates auth token when a user is created.
-    """
-    if created:
-        Token.objects.create(user=instance)
-
-
-@receiver(post_delete, sender=File)
-def auto_delete_file_on_delete(sender, instance, **kwargs):
-    """
-    Deletes file from filesystem
-    when corresponding `File` object is deleted.
-    """
-    if instance.file:
-        if os.path.isfile(instance.file.path):
-            os.remove(instance.file.path)
-
-
-@receiver(post_save, sender=Project)
-@receiver(post_save, sender=File)
-@receiver(post_save, sender=Report)
-def auto_create_action(sender, instance, **kwargs):
-
-    if isinstance(instance, Project):
-        action_type = "PC"
-    elif isinstance(instance, File):
-        action_type = "FU"
-    elif isinstance(instance, Report):
-        action_type = "RC"
-
-    action_obj = Action.objects.create(
-        associated_user=instance.user,
-        action_type=action_type,
-        action_detail=instance.__str__(),
-    )
-    action_obj.save()

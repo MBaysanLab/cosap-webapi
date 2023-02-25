@@ -13,4 +13,8 @@ router.register(r"projects", views.ProjectViewSet, basename="project")
 router.register(r"files", views.FileViewSet, basename="files")
 router.register(r"actions", views.ActionViewSet, basename="action")
 
-urlpatterns = [path("", include(router.urls))]
+urlpatterns = [
+    path("", include(router.urls)),
+    path("files/<path:path>", views.FileDownloadView.as_view()),
+    path("alignments/<path:path>", views.AligmentLoadView.as_view()),
+]
