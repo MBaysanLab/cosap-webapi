@@ -1,24 +1,26 @@
+import mimetypes
 import os
+import json
+from pathlib import Path
 from urllib import request
+from wsgiref.util import FileWrapper
 
+import pysam
 from django.contrib.auth import get_user_model
+from django.forms.models import model_to_dict
 from django.db.models import Q
 from django.db.models.query import QuerySet
-from rest_framework import mixins, permissions, status, viewsets, views
+from django.http import Http404, HttpResponse, StreamingHttpResponse
+from rest_framework import mixins, permissions, status, views, viewsets
 from rest_framework.authtoken.models import Token
 from rest_framework.authtoken.views import ObtainAuthToken
 from rest_framework.response import Response
-from django.http import HttpResponse, StreamingHttpResponse, Http404
 
 from cosapweb.api import serializers
-from cosapweb.api.models import Action, File, Project
+from cosapweb.api.models import Action, File, Project, Variant,ProjectVariants
 from cosapweb.api.permissions import IsOwnerOrDoesNotExist, OnlyAdminToList
-from ..common.utils import run_parse_project_data, get_user_dir
-import mimetypes
-from wsgiref.util import FileWrapper
-from pathlib import Path
-import pysam
 
+from ..common.utils import get_user_dir, run_parse_project_data
 
 USER = get_user_model()
 
@@ -140,25 +142,26 @@ class ProjectViewSet(viewsets.ModelViewSet):
             ),
             "time": project.created_at,
         }
-        project_data = run_parse_project_data(
-            "/home/mae/Desktop/cosap-webapi/data/1_arif0241@hotmail.com/105_api_test"
-        )
-        return Response(
+
+        print("Querying variants...")
+        pv = ProjectVariants.objects.filter(project=project)
+        print("Querying variants...done")
+        variants = [model_to_dict(pvv.variant) for pvv in pv][:100]
+        print("Converting variants...done")
+        variants_json = json.dumps(variants)
+
+        return Response( 
             {
                 "metadata": project_metadata,
                 "coverage_stats": {
-                    "mean_coverage": project_data["qc_results"]["mean_coverage"],
-                    "coverage_hist": project_data["qc_coverage_histogram"][
-                        "hist"
-                    ].items(),
+                    "mean_coverage": 152,
+                    "coverage_hist": []
                 },
                 "mapping_stats": {
-                    "percetange_of_mapped_reads": project_data["qc_results"][
-                        "percentage_aligned"
-                    ]
+                    "percetange_of_mapped_reads": 99.21
                 },
-                "variant_stats": project_data["variant_stats"],
-                "variants": project_data["variants"],
+                "variant_stats": {'total_variants': 8313, 'significant_variants': 1, 'uncertain_variants': 803},
+                "variants": variants,
             }
         )
 

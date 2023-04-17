@@ -1,7 +1,6 @@
 import os
 
 from django.apps import apps
-
 from django.contrib.auth import get_user_model
 from django.contrib.auth.hashers import make_password
 from django.contrib.auth.models import AbstractUser, UserManager
@@ -76,8 +75,10 @@ class Project(models.Model):
     def __str__(self):
         return self.name
 
+
 def user_directory_path(instance, filename):
     return f"{instance.user.id}_{instance.user.email}/{instance.project.id}_{instance.project.name}/{filename}"
+
 
 class ProjectResult(models.Model):
     project = models.ForeignKey(Project, on_delete=models.CASCADE)
@@ -87,35 +88,38 @@ class ProjectResult(models.Model):
     number_of_significant_variants = models.IntegerField()
     number_of_vus = models.IntegerField()
 
+
 class Variant(models.Model):
     location = models.CharField(max_length=256)
     ref = models.CharField(max_length=256)
     alt = models.CharField(max_length=256)
-    function = models.CharField(max_length=256, null=True)
+    function = models.TextField(max_length=256, null=True)
     gene_symbol = models.CharField(max_length=256, null=True)
-    consequence = models.CharField(max_length=256, null=True)
-    coding_consequece = models.CharField(max_length=256, null=True)
+    consequence = models.TextField(max_length=256, null=True)
+    coding_consequece = models.TextField(max_length=256, null=True)
     ens_gene = models.CharField(max_length=256, null=True)
-    feature = models.CharField(max_length=256, null=True)
+    feature = models.TextField(max_length=256, null=True)
     hgvsc = models.CharField(max_length=256, null=True)
     classification = models.CharField(max_length=256, null=True)
     gnomad_af = models.FloatField(null=True)
-    aa_change = models.CharField(max_length=256, null=True)
+    aa_change = models.TextField(max_length=256, null=True)
     rs_id = models.CharField(max_length=256, null=True)
     sift_score = models.FloatField(null=True)
     polyphen_score = models.FloatField(null=True)
     cadd_score = models.FloatField(null=True)
-    interpro_domain = models.CharField(max_length=256, null=True)
-    clinical_significance = models.CharField(max_length=256, null=True)
+    interpro_domain = models.TextField(max_length=256, null=True)
+    clinical_significance = models.TextField(max_length=256, null=True)
     cosmic_id = models.CharField(max_length=256, null=True)
-    clinvar_classification = models.CharField(max_length=256, null=True)
-    evidence = models.CharField(max_length=256, null=True)
-    orphanet_info = models.CharField(max_length=256, null=True)
-    other_info = models.CharField(max_length=256, null=True)
+    clinvar_classification = models.TextField(max_length=256, null=True)
+    evidence = models.TextField(max_length=256, null=True)
+    orphanet_info = models.TextField(max_length=256, null=True)
+    other_info = models.TextField(max_length=256, null=True)
 
-class ProjectVariants(models):
+
+class ProjectVariants(models.Model):
     project = models.ForeignKey(Project, null=True, on_delete=models.SET_NULL)
     variant = models.ForeignKey(Variant, on_delete=models.CASCADE)
+
 
 class File(models.Model):
 

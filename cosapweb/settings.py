@@ -29,7 +29,7 @@ DEBUG = os.environ.get("COSAP_DJANGO_DEBUG") == "True"
 ALLOWED_HOSTS = ["localhost", os.environ.get("COSAP_DJANGO_HOST")]
 
 CORS_ALLOWED_ORIGINS = ["http://localhost:3000"]
-CORS_ALLOW_HEADERS = ["authorization", "content-type","range", "cache-control"]
+CORS_ALLOW_HEADERS = ["authorization", "content-type", "range", "cache-control"]
 CORS_ALLOW_CREDENTIALS = True
 
 # Application definition
@@ -83,7 +83,7 @@ SESSION_ENGINE = "django.contrib.sessions.backends.signed_cookies"
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": [
         "rest_framework.authentication.TokenAuthentication",
-        "cosapweb.authentication.BearerAuthentication"
+        "cosapweb.authentication.BearerAuthentication",
     ],
 }
 
@@ -151,9 +151,14 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 
 CELERY_BROKER_URL = "amqp://guest:guest@rabbitmq:5672/vhost"
-CELERY_RESULT_BACKEND = 'redis://redis:6379/0'
+CELERY_RESULT_BACKEND = "redis://redis:6379/0"
 CELERY_TASK_ROUTES = {
     "parse_project_results": {
+        "exchange": "cosap_worker",
+        "exchange_type": "direct",
+        "routing_key": "cosap_worker",
+    },
+    "submit_cosap_dna_job": {
         "exchange": "cosap_worker",
         "exchange_type": "direct",
         "routing_key": "cosap_worker",

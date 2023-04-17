@@ -1,9 +1,13 @@
-from django.dispatch import receiver
-from rest_framework.authtoken.models import Token
+import os
+
 from django.conf import settings
 from django.db.models.signals import post_delete, post_save
-from .models import File, Project, Report, Action
-import os
+from django.dispatch import receiver
+from rest_framework.authtoken.models import Token
+
+from .models import Action, File, Project, Report
+from ..common.utils import submit_cosap_dna_job, run_parse_project_data
+
 
 @receiver(post_save, sender=settings.AUTH_USER_MODEL)
 def create_auth_token(sender, instance=None, created=False, **kwargs):
@@ -44,6 +48,13 @@ def auto_create_action(sender, instance, **kwargs):
     )
     action_obj.save()
 
+
 @receiver(post_save, sender=Project)
-def submit_cosap_job(sender, instance, **kwargs):
-    pass
+def submit_celery_cosap_job(sender, instance, **kwargs):
+    normal_sample = File.objects.filter(project=instance, sample_type="normal")
+    tumor_samples = list(File.objects.filter(project=instance, sample_type="tumor"))
+    submit_cosap_dna_job(
+        analysis_type=instance.project_type,
+        normal_sample=instance.normal_sample,
+
+    )
