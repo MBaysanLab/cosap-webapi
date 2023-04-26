@@ -15,6 +15,7 @@ from rest_framework import mixins, permissions, status, views, viewsets
 from rest_framework.authtoken.models import Token
 from rest_framework.authtoken.views import ObtainAuthToken
 from rest_framework.response import Response
+from django_drf_filepond.views import PatchView, ProcessView
 
 from cosapweb.api import serializers
 from cosapweb.api.models import Action, File, Project, Variant,ProjectVariants
@@ -273,3 +274,25 @@ class ActionViewSet(viewsets.ModelViewSet):
             user = self.request.user
             queryset = queryset.filter(Q(associated_user=user))
         return queryset
+
+class FileViewSet(views.APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        files = [file.filename for file in File.objects.filter(user=request.user)]
+        return Response(files)
+    
+    def post(self, request, *args, **kwargs):
+        if request.form.get("filename"):
+            filename = request.form.get("filename")
+            user = request.user
+            user_dir = get_user_dir(user)
+            file_path = os.path.join(user_dir, filename)
+            with open(file_path, "wb") as f:
+                f.write(request.data)
+            File.objects.create(user=user, project=request.form.get("project"), name=filename, file=file_path, sample_type=request.form.get("sample_type"))
+        return Response({"status": "success"})
+
+class PatchView(PatchView):
+    def patch(**kwargs):
+        return super().patch(**kwargs)

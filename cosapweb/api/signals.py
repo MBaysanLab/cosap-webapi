@@ -2,6 +2,7 @@ import os
 
 from django.conf import settings
 from django.db.models.signals import post_delete, post_save
+from django_drf_filepond.models import TemporaryUpload
 from django.dispatch import receiver
 from rest_framework.authtoken.models import Token
 
@@ -19,6 +20,7 @@ def create_auth_token(sender, instance=None, created=False, **kwargs):
 
 
 @receiver(post_delete, sender=File)
+@receiver(post_delete, sender=TemporaryUpload)
 def auto_delete_file_on_delete(sender, instance, **kwargs):
     """
     Deletes file from filesystem
@@ -49,12 +51,16 @@ def auto_create_action(sender, instance, **kwargs):
     action_obj.save()
 
 
-@receiver(post_save, sender=Project)
-def submit_celery_cosap_job(sender, instance, **kwargs):
-    normal_sample = File.objects.filter(project=instance, sample_type="normal")
-    tumor_samples = list(File.objects.filter(project=instance, sample_type="tumor"))
-    submit_cosap_dna_job(
-        analysis_type=instance.project_type,
-        normal_sample=instance.normal_sample,
+# @receiver(post_save, sender=Project)
+# def submit_celery_cosap_job(sender, instance, **kwargs):
+#     normal_sample = File.objects.filter(project=instance, sample_type="normal")
+#     tumor_samples = list(File.objects.filter(project=instance, sample_type="tumor"))
+#     submit_cosap_dna_job(
+#         analysis_type=instance.project_type,
+#         normal_sample=instance.normal_sample,
+#     )
 
-    )
+@receiver(post_save, sender=TemporaryUpload)
+def save_user_file(sender, instance, **kwargs):
+    print("this is fired")
+    print(instance.file.path)

@@ -11,6 +11,7 @@ https://docs.djangoproject.com/en/4.0/ref/settings/
 """
 
 import os
+import tempfile
 from pathlib import Path
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -29,11 +30,29 @@ DEBUG = os.environ.get("COSAP_DJANGO_DEBUG") == "True"
 ALLOWED_HOSTS = ["localhost", os.environ.get("COSAP_DJANGO_HOST")]
 
 CORS_ALLOWED_ORIGINS = ["http://localhost:3000"]
-CORS_ALLOW_HEADERS = ["authorization", "content-type", "range", "cache-control"]
+CORS_ALLOW_HEADERS = [
+    "authorization",
+    "content-type",
+    "range",
+    "cache-control",
+    "upload-length",
+    "upload-name",
+    "upload-offset",
+    "x-csrf-token",
+]
 CORS_ALLOW_CREDENTIALS = True
 
-# Application definition
+DJANGO_DRF_FILEPOND_FILE_STORE_PATH = os.path.join(BASE_DIR, "files")
+DJANGO_DRF_FILEPOND_PERMISSION_CLASSES = {
+    'GET_FETCH': ['rest_framework.permissions.IsAuthenticated', ],
+    'GET_LOAD': ['rest_framework.permissions.IsAuthenticated', ],
+    'POST_PROCESS': ['rest_framework.permissions.IsAuthenticated', ],
+    'GET_RESTORE': ['rest_framework.permissions.IsAuthenticated', ],
+    'DELETE_REVERT': ['rest_framework.permissions.IsAuthenticated', ],
+    'PATCH_PATCH': ['rest_framework.permissions.IsAuthenticated', ],
+}
 
+# Application definition
 INSTALLED_APPS = [
     "django.contrib.admin",
     "django.contrib.auth",
@@ -45,6 +64,7 @@ INSTALLED_APPS = [
     "corsheaders",
     "rest_framework",
     "cosapweb.api",
+    "django_drf_filepond",
 ]
 
 MIDDLEWARE = [
@@ -162,6 +182,6 @@ CELERY_TASK_ROUTES = {
         "exchange": "cosap_worker",
         "exchange_type": "direct",
         "routing_key": "cosap_worker",
-    }
+    },
 }
 CELERY_ACCEPT_CONTENT = ["pickle", "json", "msgpack", "yaml"]
