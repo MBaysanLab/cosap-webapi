@@ -1,24 +1,35 @@
+import json
 import mimetypes
 import os
-import json
+import tempfile
 from pathlib import Path
 from urllib import request
 from wsgiref.util import FileWrapper
 
 import pysam
 from django.contrib.auth import get_user_model
-from django.forms.models import model_to_dict
 from django.db.models import Q
 from django.db.models.query import QuerySet
+from django.forms.models import model_to_dict
 from django.http import Http404, HttpResponse, StreamingHttpResponse
+from django_drf_filepond.parsers import PlainTextParser, UploadChunkParser
+from django_drf_filepond.renderers import PlainTextRenderer
+from django_drf_filepond.views import PatchView, ProcessView
 from rest_framework import mixins, permissions, status, views, viewsets
 from rest_framework.authtoken.models import Token
 from rest_framework.authtoken.views import ObtainAuthToken
+from rest_framework.parsers import MultiPartParser
 from rest_framework.response import Response
-from django_drf_filepond.views import PatchView, ProcessView
 
 from cosapweb.api import serializers
-from cosapweb.api.models import Action, File, Project, Variant,ProjectVariants
+from cosapweb.api.models import (
+    Action,
+    File,
+    Project,
+    ProjectFile,
+    ProjectVariant,
+    Variant,
+)
 from cosapweb.api.permissions import IsOwnerOrDoesNotExist, OnlyAdminToList
 
 from ..common.utils import get_user_dir, run_parse_project_data
@@ -127,8 +138,40 @@ class ProjectViewSet(viewsets.ModelViewSet):
             queryset = queryset.filter(Q(user=user) | Q(collaborators=user))
         return queryset
 
-    def perform_create(self, serializer):
-        serializer.save(user=self.request.user, status="IP")
+    def create(self, request, *args, **kwargs):
+        user = request.user
+        project_type = request.POST.get("project_type")
+        name = request.POST.get("name")
+        algorithms = json.loads(request.POST.get("algorithms"))
+        new_project = Project.objects.create(
+            user=user,
+            project_type=project_type,
+            name=name,
+            algorithms=algorithms,
+            status="PENDING",
+        )
+
+        normal_file_ids = json.loads(request.POST.get("normal_files"))
+        tumor_file_ids = json.loads(request.POST.get("tumor_files"))
+        bed_file_ids = json.loads(request.POST.get("bed_files"))
+
+        project_files = ProjectFile.objects.create(project=new_project)
+
+        for file_id in normal_file_ids:
+            file = File.objects.get(uuid=file_id)
+            project_files.files.add(file)
+
+        for file_id in tumor_file_ids:
+            file = File.objects.get(uuid=file_id)
+            project_files.files.add(file)
+
+        for file_id in bed_file_ids:
+            file = File.objects.get(uuid=file_id)
+            project_files.files.add(file)
+        
+        project_files.save()
+
+        return HttpResponse(status=status.HTTP_201_CREATED)
 
     def retrieve(self, request, pk):
         project = Project.objects.get(id=pk)
@@ -145,55 +188,25 @@ class ProjectViewSet(viewsets.ModelViewSet):
         }
 
         print("Querying variants...")
-        pv = ProjectVariants.objects.filter(project=project)
+        pv = ProjectVariant.objects.filter(project=project)
         print("Querying variants...done")
         variants = [model_to_dict(pvv.variant) for pvv in pv][:100]
         print("Converting variants...done")
         variants_json = json.dumps(variants)
 
-        return Response( 
+        return Response(
             {
                 "metadata": project_metadata,
-                "coverage_stats": {
-                    "mean_coverage": 152,
-                    "coverage_hist": []
+                "coverage_stats": {"mean_coverage": 152, "coverage_hist": []},
+                "mapping_stats": {"percetange_of_mapped_reads": 99.21},
+                "variant_stats": {
+                    "total_variants": 8313,
+                    "significant_variants": 1,
+                    "uncertain_variants": 803,
                 },
-                "mapping_stats": {
-                    "percetange_of_mapped_reads": 99.21
-                },
-                "variant_stats": {'total_variants': 8313, 'significant_variants': 1, 'uncertain_variants': 803},
                 "variants": variants,
             }
         )
-
-
-class FileViewSet(viewsets.ModelViewSet):
-    """
-    View to create, view, update and list samples.
-    """
-
-    permission_classes = [permissions.IsAuthenticated]
-
-    queryset = File.objects.order_by("-uploaded_at")
-    serializer_class = serializers.FileSerializer
-
-    def get_queryset(self):
-        """
-        Get the list of items for this view.
-
-        Overridden to only return samples for projects where the requesting
-        user is the creator of the project or a collaborator in the project.
-        """
-        queryset = self.queryset
-        if isinstance(queryset, QuerySet):
-            user = self.request.user
-            queryset = queryset.filter(
-                Q(project__user=user) | Q(project__collaborators=user)
-            )
-        return queryset
-
-    def perform_create(self, serializer):
-        serializer.save(user=self.request.user)
 
 
 class FileDownloadView(views.APIView):
@@ -275,24 +288,36 @@ class ActionViewSet(viewsets.ModelViewSet):
             queryset = queryset.filter(Q(associated_user=user))
         return queryset
 
-class FileViewSet(views.APIView):
-    permission_classes = [permissions.IsAuthenticated]
 
-    def get(self, request):
+class FileViewSet(ProcessView, PatchView, viewsets.ViewSet):
+    permission_classes = [permissions.IsAuthenticated]
+    parser_classes = (MultiPartParser, UploadChunkParser)
+    renderer_classes = (PlainTextRenderer,)
+
+    def list(self, request):
         files = [file.filename for file in File.objects.filter(user=request.user)]
         return Response(files)
-    
-    def post(self, request, *args, **kwargs):
-        if request.form.get("filename"):
-            filename = request.form.get("filename")
-            user = request.user
-            user_dir = get_user_dir(user)
-            file_path = os.path.join(user_dir, filename)
-            with open(file_path, "wb") as f:
-                f.write(request.data)
-            File.objects.create(user=user, project=request.form.get("project"), name=filename, file=file_path, sample_type=request.form.get("sample_type"))
-        return Response({"status": "success"})
 
-class PatchView(PatchView):
-    def patch(**kwargs):
-        return super().patch(**kwargs)
+    def create(self, request, *args, **kwargs):
+        if request.FILES.get("file"):
+            filename = request.FILES.get("file").name
+            sample_type = request.POST.get("sample_type")
+            file = request.FILES.get("file")
+            user = request.user
+            f = File.objects.create(
+                name=filename, user=user, file=file, sample_type=sample_type
+            )
+            f.save()
+            return Response(str(f.uuid))
+        else:
+            response = super().post(request, *args, **kwargs)
+            if response.status_code == 200:
+                temp_id = response.data
+                sample_type = request.POST.get("sample_type")
+                f = File.objects.create(
+                    user=request.user, uuid=temp_id, sample_type=sample_type
+                )
+            return response
+
+    def patch(self, request, *args, **kwargs):
+        return super().patch(request, *args, **kwargs)

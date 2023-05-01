@@ -123,7 +123,6 @@ class ProjectSerializer(serializers.ModelSerializer):
             "user",
             "created_at",
             "collaborators",
-            "files",
             "algorithms",
         ]
         read_only_fields = ["created_at", "status", "progress"]

@@ -42,15 +42,8 @@ CORS_ALLOW_HEADERS = [
 ]
 CORS_ALLOW_CREDENTIALS = True
 
-DJANGO_DRF_FILEPOND_FILE_STORE_PATH = os.path.join(BASE_DIR, "files")
-DJANGO_DRF_FILEPOND_PERMISSION_CLASSES = {
-    'GET_FETCH': ['rest_framework.permissions.IsAuthenticated', ],
-    'GET_LOAD': ['rest_framework.permissions.IsAuthenticated', ],
-    'POST_PROCESS': ['rest_framework.permissions.IsAuthenticated', ],
-    'GET_RESTORE': ['rest_framework.permissions.IsAuthenticated', ],
-    'DELETE_REVERT': ['rest_framework.permissions.IsAuthenticated', ],
-    'PATCH_PATCH': ['rest_framework.permissions.IsAuthenticated', ],
-}
+DJANGO_DRF_FILEPOND_UPLOAD_TMP = os.path.join(BASE_DIR, "filepond_temp_files")
+DJANGO_DRF_FILEPOND_FILE_STORE_PATH = BASE_DIR
 
 # Application definition
 INSTALLED_APPS = [
@@ -185,3 +178,4 @@ CELERY_TASK_ROUTES = {
     },
 }
 CELERY_ACCEPT_CONTENT = ["pickle", "json", "msgpack", "yaml"]
+

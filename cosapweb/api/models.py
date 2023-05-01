@@ -6,6 +6,7 @@ from django.contrib.auth.hashers import make_password
 from django.contrib.auth.models import AbstractUser, UserManager
 from django.db import models
 from django_countries.fields import CountryField
+import uuid
 
 
 class CustomUserManager(UserManager):
@@ -56,8 +57,10 @@ class Project(models.Model):
 
     COMPLETED = "CO"
     IN_PROGRESS = "IP"
+    PENDING = "PENDING"
     CANCELLED = "CANCELLED"
     PROJECT_STATUS_CHOICES = [
+        (PENDING, "pending"),
         (COMPLETED, "completed"),
         (IN_PROGRESS, "in_progress"),
         (CANCELLED, "cancelled"),
@@ -74,10 +77,6 @@ class Project(models.Model):
 
     def __str__(self):
         return self.name
-
-
-def user_directory_path(instance, filename):
-    return f"{instance.user.id}_{instance.user.email}/{instance.project.id}_{instance.project.name}/{filename}"
 
 
 class ProjectResult(models.Model):
@@ -116,9 +115,13 @@ class Variant(models.Model):
     other_info = models.TextField(max_length=256, null=True)
 
 
-class ProjectVariants(models.Model):
-    project = models.ForeignKey(Project, null=True, on_delete=models.SET_NULL)
-    variant = models.ForeignKey(Variant, on_delete=models.CASCADE)
+class ProjectVariant(models.Model):
+    project = models.ForeignKey(Project, null=True, on_delete=models.CASCADE)
+    variants = models.ManyToManyField(Variant)
+
+
+def user_directory_path(instance, filename):
+    return os.path.join(f"{instance.user.id}_{instance.user.email}", "files", filename)
 
 
 class File(models.Model):
@@ -138,20 +141,30 @@ class File(models.Model):
         (JSON, "json"),
     ]
 
-    TUMOR = "TM"
-    NORMAL = "NM"
+    TUMOR = "TUMOR"
+    NORMAL = "NORMAL"
     SAMPLE_TYPES = [(TUMOR, "tumor"), (NORMAL, "normal")]
 
     user = models.ForeignKey(USER, null=True, on_delete=models.SET_NULL)
-    project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name="files")
+    uuid = models.CharField(max_length=256, default=uuid.uuid4, editable=True)
     uploaded_at = models.DateTimeField(auto_now_add=True)
-    name = models.CharField(max_length=256)
+    name = models.CharField(max_length=256, blank=True, null=True)
     file_type = models.CharField(choices=FILE_TYPES, max_length=256)
-    sample_type = models.CharField(choices=SAMPLE_TYPES, max_length=256)
+    sample_type = models.CharField(
+        choices=SAMPLE_TYPES, null=True, blank=True, max_length=256
+    )
     file = models.FileField(upload_to=user_directory_path)
 
     def __str__(self):
-        return self.name
+        return self.uuid
+
+
+class ProjectFile(models.Model):
+    project = models.ForeignKey(Project, null=True, on_delete=models.CASCADE)
+    files = models.ManyToManyField(File)
+
+    def __str__(self):
+        return f"{self.project.name}_files"
 
 
 class Report(models.Model):
@@ -190,7 +203,7 @@ class Action(models.Model):
         USER, blank=True, null=True, on_delete=models.CASCADE, related_name="actions"
     )
     action_type = models.CharField(choices=ACTION_TYPES, max_length=2)
-    action_detail = models.CharField(max_length=256)
+    action_detail = models.CharField(max_length=256, null=True, blank=True)
     created_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
