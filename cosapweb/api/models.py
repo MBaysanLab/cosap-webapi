@@ -1,4 +1,5 @@
 import os
+import uuid
 
 from django.apps import apps
 from django.contrib.auth import get_user_model
@@ -6,7 +7,6 @@ from django.contrib.auth.hashers import make_password
 from django.contrib.auth.models import AbstractUser, UserManager
 from django.db import models
 from django_countries.fields import CountryField
-import uuid
 
 
 class CustomUserManager(UserManager):
@@ -156,7 +156,7 @@ class File(models.Model):
     file = models.FileField(upload_to=user_directory_path)
 
     def __str__(self):
-        return self.uuid
+        return f"{self.id}-{self.name}"
 
 
 class ProjectFile(models.Model):

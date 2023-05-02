@@ -2,7 +2,28 @@ import os
 
 from django.conf import settings
 
-from ..celery import celery_app
+
+def levenshtein(s1, s2):
+    if len(s1) < len(s2):
+        return levenshtein(s2, s1)
+
+    # len(s1) >= len(s2)
+    if len(s2) == 0:
+        return len(s1)
+
+    previous_row = range(len(s2) + 1)
+    for i, c1 in enumerate(s1):
+        current_row = [i + 1]
+        for j, c2 in enumerate(s2):
+            insertions = (
+                previous_row[j + 1] + 1
+            )  # j+1 instead of j since previous_row and current_row are one character longer
+            deletions = current_row[j] + 1  # than s2
+            substitutions = previous_row[j] + (c1 != c2)
+            current_row.append(min(insertions, deletions, substitutions))
+        previous_row = current_row
+
+    return previous_row[-1]
 
 def match_read_pairs(file_list: list) -> list[tuple]:
     """
@@ -22,7 +43,14 @@ def match_read_pairs(file_list: list) -> list[tuple]:
     if len(read_1) != len(read_2):
         raise ValueError("Some pairs are missing.")
     
-    return list(zip(read_1, read_2))
+    pair_list = list(zip(read_1, read_2))
+
+    for pair in pair_list:
+        if levenshtein(pair[0], pair[1]) != 1:
+            raise ValueError("Some pairs are not matching.")
+    
+    return pair_list
+
 
 def run_parse_project_data(path):
     """
@@ -36,40 +64,7 @@ def run_parse_project_data(path):
 
     return project_data
 
-
-def submit_cosap_dna_job(
-    analysis_type,
-    workdir,
-    normal_sample,
-    tumor_sample,
-    bed_file,
-    mappers,
-    variant_callers,
-    normal_sample_name,
-    tumor_sample_name,
-    bam_qc,
-    annotation,
-):
-
-    cosap_dna_task = celery_app.send_task(
-        "cosap_dna_pipeline_task",
-        args=[
-            analysis_type,
-            workdir,
-            normal_sample,
-            tumor_sample,
-            bed_file,
-            mappers,
-            variant_callers,
-            normal_sample_name,
-            tumor_sample_name,
-            bam_qc,
-            annotation,
-        ],
-    )
-    return celery_app.AsyncResult(cosap_dna_task.id)
-
-
 def get_user_dir(user):
     user_path = f"{user.id}_{user.email}"
     return os.path.join(settings.MEDIA_ROOT, user_path)
+

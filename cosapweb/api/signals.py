@@ -1,15 +1,16 @@
 import os
+from pathlib import PurePosixPath
 
 from django.conf import settings
 from django.db.models.signals import post_delete, post_save
 from django.dispatch import receiver
 from django_drf_filepond.api import store_upload
-from django_drf_filepond.models import TemporaryUploadChunked, TemporaryUpload
+from django_drf_filepond.models import TemporaryUpload, TemporaryUploadChunked
 from rest_framework.authtoken.models import Token
 
-from ..common.utils import run_parse_project_data, submit_cosap_dna_job
-from .models import Action, File, Project, Report, ProjectFile
-from ..common.utils import get_user_dir
+from ..common.utils import (get_user_dir, match_read_pairs,
+                            run_parse_project_data)
+from .models import Action, File, Project, ProjectFile, Report
 
 
 @receiver(post_save, sender=settings.AUTH_USER_MODEL)
@@ -32,6 +33,34 @@ def auto_delete_file_on_delete(sender, instance, **kwargs):
             os.remove(instance.file.path)
 
 
+@receiver(post_save, sender=File)
+def auto_extract_file_extension(sender, instance, created, **kwargs):
+    if not created:
+        return
+    
+    """
+    Extracts file extension from file name.
+    """
+    FILE_EXTENSIONS = {
+        "FQ": ["fastq", "fq"],
+        "BAM": ["bam"],
+        "BED": ["bed", "bed6"],
+        "VCF": ["vcf"],
+        "TXT": ["txt"],
+        "JSON": ["json"],
+    }
+
+    if instance.name:
+        path = PurePosixPath(instance.name)
+        suffixes = path.suffixes
+
+        for file_type, extensions in FILE_EXTENSIONS.items():
+            if len(set(extensions).intersection(set(suffixes))) > 0:
+                instance.file_type = file_type
+
+        instance.save()
+
+
 @receiver(post_save, sender=Project)
 @receiver(post_save, sender=File)
 @receiver(post_save, sender=Report)
@@ -51,6 +80,7 @@ def auto_create_action(sender, instance, **kwargs):
     )
     action_obj.save()
 
+
 @receiver(post_delete, sender=TemporaryUploadChunked)
 def save_tmp_upload(sender, instance, **kwargs):
     """
@@ -63,19 +93,11 @@ def save_tmp_upload(sender, instance, **kwargs):
 
     fl = File.objects.get(uuid=tmp_id)
     user_dir = get_user_dir(fl.user)
-    
-    permanent_file_path = os.rename(tu.get_file_path(), os.path.join(user_dir, "files", f"{fl.id}_upload_file_name"))
+
+    permanent_file_path = os.rename(
+        tu.get_file_path(), os.path.join(user_dir, "files", f"{fl.id}_{upload_file_name}")
+    )
+    print("saving to: ", permanent_file_path)
     fl.name = upload_file_name
     fl.file = permanent_file_path
     fl.save()
-
-
-# @receiver(post_save, sender=Project)
-# def submit_celery_cosap_job(sender, instance, **kwargs):
-#     normal_sample = File.objects.filter(project=instance, sample_type="normal")
-#     tumor_samples = list(File.objects.filter(project=instance, sample_type="tumor"))
-#     mappers = P
-#     submit_cosap_dna_job(
-#         analysis_type=instance.project_type,
-#         normal_sample=instance.normal_sample,
-#     )

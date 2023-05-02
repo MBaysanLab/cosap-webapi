@@ -20,6 +20,7 @@ from rest_framework.authtoken.models import Token
 from rest_framework.authtoken.views import ObtainAuthToken
 from rest_framework.parsers import MultiPartParser
 from rest_framework.response import Response
+from .cosap_task_submitter import submit_cosap_dna_job
 
 from cosapweb.api import serializers
 from cosapweb.api.models import (
@@ -170,6 +171,8 @@ class ProjectViewSet(viewsets.ModelViewSet):
             project_files.files.add(file)
         
         project_files.save()
+
+        submit_cosap_dna_job(new_project)
 
         return HttpResponse(status=status.HTTP_201_CREATED)
 
