@@ -59,11 +59,13 @@ class Project(models.Model):
     IN_PROGRESS = "IP"
     PENDING = "PENDING"
     CANCELLED = "CANCELLED"
+    FAILED = "FAILED"
     PROJECT_STATUS_CHOICES = [
         (PENDING, "pending"),
         (COMPLETED, "completed"),
         (IN_PROGRESS, "in_progress"),
         (CANCELLED, "cancelled"),
+        (FAILED, "failed")
     ]
 
     user = models.ForeignKey(USER, null=True, on_delete=models.SET_NULL)
@@ -211,3 +213,10 @@ class Action(models.Model):
 
     class Meta:
         ordering = ["created_at"]
+
+class ProjectTask(models.Model):
+    project = models.ForeignKey(Project, on_delete=models.CASCADE)
+    task_id = models.CharField(max_length=256)
+
+    def __str__(self):
+        return f"{self.project.name} - task_id:{self.task_id}"

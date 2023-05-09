@@ -150,7 +150,7 @@ USE_TZ = True
 
 # Stored files
 
-MEDIA_ROOT = "data"
+MEDIA_ROOT = os.path.join(BASE_DIR, 'data/')
 
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/4.0/howto/static-files/
@@ -171,11 +171,12 @@ CELERY_TASK_ROUTES = {
         "exchange_type": "direct",
         "routing_key": "cosap_worker",
     },
-    "submit_cosap_dna_job": {
+    "cosap_dna_pipeline_task": {
         "exchange": "cosap_worker",
         "exchange_type": "direct",
         "routing_key": "cosap_worker",
     },
 }
 CELERY_ACCEPT_CONTENT = ["pickle", "json", "msgpack", "yaml"]
+CELERY_SEND_TASK = True
 

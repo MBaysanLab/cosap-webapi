@@ -15,6 +15,7 @@ router.register(r"actions", views.ActionViewSet, basename="action")
 urlpatterns = [
     path("", include(router.urls)),
     path("files", views.FileViewSet.as_view({"get":"list", "post":"create"})),
+    path("change_password/", views.GetUserViewSet.as_view({"put":"update"})),
     re_path(r"^files/patch/(?P<chunk_id>[0-9a-zA-Z]{22})$", views.FileViewSet.as_view({"patch":"patch"})),
     # path("files/<path:path>", views.FileDownloadView.as_view()),
     path("alignments/<path:path>", views.AligmentLoadView.as_view()),

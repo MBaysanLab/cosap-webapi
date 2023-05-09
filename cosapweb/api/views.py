@@ -2,6 +2,7 @@ import json
 import mimetypes
 import os
 import tempfile
+from multiprocessing.pool import ThreadPool
 from pathlib import Path
 from urllib import request
 from wsgiref.util import FileWrapper
@@ -20,20 +21,14 @@ from rest_framework.authtoken.models import Token
 from rest_framework.authtoken.views import ObtainAuthToken
 from rest_framework.parsers import MultiPartParser
 from rest_framework.response import Response
-from .cosap_task_submitter import submit_cosap_dna_job
 
 from cosapweb.api import serializers
-from cosapweb.api.models import (
-    Action,
-    File,
-    Project,
-    ProjectFile,
-    ProjectVariant,
-    Variant,
-)
+from cosapweb.api.models import (Action, File, Project, ProjectFile,
+                                 ProjectTask, ProjectVariant, Variant)
 from cosapweb.api.permissions import IsOwnerOrDoesNotExist, OnlyAdminToList
 
-from ..common.utils import get_user_dir, run_parse_project_data
+from ..common.utils import get_user_dir
+from .celery_handlers import submit_cosap_dna_job
 
 USER = get_user_model()
 
@@ -79,6 +74,26 @@ class GetUserViewSet(viewsets.ViewSet):
             user = Token.objects.get(key=request_token).user
             return Response({"user": user.email}, status=status.HTTP_200_OK)
 
+        return Response(status=status.HTTP_404_NOT_FOUND)
+    
+    def update(self, request):
+        """
+            Change password
+        """
+        request_token = (
+            request.headers["Authorization"].split()[1]
+            if "Authorization" in request.headers
+            else None
+        )
+
+        if request_token and Token.objects.filter(key=request_token).exists():
+            user = Token.objects.get(key=request_token).user
+            if user.check_password(request.data['old_password']):
+                user.set_password(request.data['new_password'])
+                user.save()
+                return Response(status=status.HTTP_200_OK)
+            else:
+                return Response(status=status.HTTP_401_UNAUTHORIZED)
         return Response(status=status.HTTP_404_NOT_FOUND)
 
 
@@ -169,11 +184,24 @@ class ProjectViewSet(viewsets.ModelViewSet):
         for file_id in bed_file_ids:
             file = File.objects.get(uuid=file_id)
             project_files.files.add(file)
-        
+
         project_files.save()
 
-        submit_cosap_dna_job(new_project)
+        #Create project directory under user directory
+        user_dir = get_user_dir(user)
+        project_dir = os.path.join(user_dir, f"{new_project.id}_{new_project.name}")
+        os.makedirs(project_dir)
+        try:
+            pool = ThreadPool(processes=1)
+            async_result = pool.apply_async(submit_cosap_dna_job, (new_project.id,))
+            task_id = async_result.get()
+            ProjectTask.objects.create(project=new_project, task_id=task_id)
 
+        except Exception as e:
+            print(e)
+            new_project.status = "FAILED"
+            new_project.save()
+        
         return HttpResponse(status=status.HTTP_201_CREATED)
 
     def retrieve(self, request, pk):
@@ -190,11 +218,8 @@ class ProjectViewSet(viewsets.ModelViewSet):
             "time": project.created_at,
         }
 
-        print("Querying variants...")
         pv = ProjectVariant.objects.filter(project=project)
-        print("Querying variants...done")
-        variants = [model_to_dict(pvv.variant) for pvv in pv][:100]
-        print("Converting variants...done")
+        variants = list(pv.variants)
         variants_json = json.dumps(variants)
 
         return Response(

@@ -1,16 +1,14 @@
 import os
 from pathlib import PurePosixPath
-
+import shutil
 from django.conf import settings
 from django.db.models.signals import post_delete, post_save
 from django.dispatch import receiver
-from django_drf_filepond.api import store_upload
 from django_drf_filepond.models import TemporaryUpload, TemporaryUploadChunked
 from rest_framework.authtoken.models import Token
 
-from ..common.utils import (get_user_dir, match_read_pairs,
-                            run_parse_project_data)
-from .models import Action, File, Project, ProjectFile, Report
+from ..common.utils import get_user_dir
+from .models import Action, File, Project, Report
 
 
 @receiver(post_save, sender=settings.AUTH_USER_MODEL)
@@ -37,7 +35,7 @@ def auto_delete_file_on_delete(sender, instance, **kwargs):
 def auto_extract_file_extension(sender, instance, created, **kwargs):
     if not created:
         return
-    
+
     """
     Extracts file extension from file name.
     """
@@ -87,17 +85,15 @@ def save_tmp_upload(sender, instance, **kwargs):
     Saves temporary upload to the file system.
     """
     tmp_id = instance.upload_id
-
     tu = TemporaryUpload.objects.get(upload_id=tmp_id)
     upload_file_name = tu.upload_name
 
     fl = File.objects.get(uuid=tmp_id)
     user_dir = get_user_dir(fl.user)
 
-    permanent_file_path = os.rename(
-        tu.get_file_path(), os.path.join(user_dir, "files", f"{fl.id}_{upload_file_name}")
-    )
-    print("saving to: ", permanent_file_path)
+    permanent_file_path = os.path.join(user_dir, "files", f"{fl.id}_{upload_file_name}")
+    shutil.move(tu.get_file_path(), permanent_file_path)
+
     fl.name = upload_file_name
     fl.file = permanent_file_path
     fl.save()
