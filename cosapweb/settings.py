@@ -29,7 +29,7 @@ DEBUG = os.environ.get("COSAP_DJANGO_DEBUG") == "True"
 
 ALLOWED_HOSTS = ["localhost", os.environ.get("COSAP_DJANGO_HOST")]
 
-CORS_ALLOWED_ORIGINS = ["http://localhost:3000"]
+CORS_ALLOWED_ORIGINS = [os.environ.get("COSAP_BIO_HOST")]
 CORS_ALLOW_HEADERS = [
     "authorization",
     "content-type",
