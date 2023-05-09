@@ -5,19 +5,19 @@ services:
     image: itubioinformatics/cosap
     volumes:
       - ./data/:/webapi/data/
-      - ${HG38_BUNDLE}:/cosap_data
+      - ${COSAP_HG38_BUNDLE}:/cosap_data
     command: celery -A cosap.celery.celery worker -l info -Q cosap_worker -c 3 -n cosap_worker@%h -Ofair
     env_file:
-      - .env.dev
+      - .env
     working_dir: /
   db:
     image: postgres
     volumes:
       - ./data/db:/var/lib/postgresql/data
     environment:
-      - POSTGRES_NAME=postgres
-      - POSTGRES_USER=${POSTGRE_USER}
-      - POSTGRES_PASSWORD=${POSTGRE_PASSWORD}
+      - POSTGRES_NAME=${COSAP_POSTGRES_NAME}
+      - POSTGRES_USER=${COSAP_POSTGRES_USER}
+      - POSTGRES_PASSWORD=${COSAP_POSTGRES_PASSWORD}
     restart: unless-stopped
   web:
     build: .
@@ -27,7 +27,7 @@ services:
     ports:
       - "8000:8000"
     env_file:
-      - .env.dev
+      - .env
     depends_on:
       - db
     restart: unless-stopped
