@@ -16,8 +16,8 @@ services:
       - ./data/db:/var/lib/postgresql/data
     environment:
       - POSTGRES_NAME=postgres
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_USER=${POSTGRE_USER}
+      - POSTGRES_PASSWORD=${POSTGRE_PASSWORD}
     restart: unless-stopped
   web:
     build: .
