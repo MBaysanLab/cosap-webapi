@@ -5,7 +5,7 @@ services:
     image: itubioinformatics/cosap
     volumes:
       - ./data/:/webapi/data/
-      - /media/mae/Elements1/hg38_bundle:/cosap_data
+      - ${HG38_BUNDLE}:/cosap_data
     command: celery -A cosap.celery.celery worker -l info -Q cosap_worker -c 3 -n cosap_worker@%h -Ofair
     env_file:
       - .env.dev
