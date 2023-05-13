@@ -11,6 +11,7 @@ router.register(r"register", views.RegisterViewSet, basename="register")
 router.register(r"get_user", views.GetUserViewSet, basename="get_user")
 router.register(r"projects", views.ProjectViewSet, basename="project")
 router.register(r"actions", views.ActionViewSet, basename="action")
+router.register(r"variants", views.ProjectVariantViewset, basename="project_variants")
 
 urlpatterns = [
     path("", include(router.urls)),

@@ -62,7 +62,9 @@ def auto_extract_file_extension(sender, instance, created, **kwargs):
 @receiver(post_save, sender=Project)
 @receiver(post_save, sender=File)
 @receiver(post_save, sender=Report)
-def auto_create_action(sender, instance, **kwargs):
+def auto_create_action(sender, instance, created, **kwargs):
+    if not created:
+        return
 
     if isinstance(instance, Project):
         action_type = "PC"
@@ -90,9 +92,13 @@ def save_tmp_upload(sender, instance, **kwargs):
 
     fl = File.objects.get(uuid=tmp_id)
 
-    permanent_file_path = os.path.join(create_and_get_user_files_dir(fl.user), f"{fl.id}_{upload_file_name}")
+    permanent_file_path = os.path.join(
+        create_and_get_user_files_dir(fl.user), f"{fl.id}_{upload_file_name}"
+    )
     shutil.move(tu.get_file_path(), permanent_file_path)
 
     fl.name = upload_file_name
     fl.file = permanent_file_path
     fl.save()
+
+    instance.delete()

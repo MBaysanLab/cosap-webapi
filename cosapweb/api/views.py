@@ -13,6 +13,7 @@ from django.db.models import Q
 from django.db.models.query import QuerySet
 from django.forms.models import model_to_dict
 from django.http import Http404, HttpResponse, StreamingHttpResponse
+from django.core import serializers as django_serializers
 from django_drf_filepond.parsers import PlainTextParser, UploadChunkParser
 from django_drf_filepond.renderers import PlainTextRenderer
 from django_drf_filepond.views import PatchView, ProcessView
@@ -206,8 +207,6 @@ class ProjectViewSet(viewsets.ModelViewSet):
 
     def retrieve(self, request, pk):
         project = Project.objects.get(id=pk)
-        file_obj = File.objects.filter(project=project).first()
-        file_path, _ = os.path.split(file_obj.file.name)
 
         project_metadata = {
             "name": project.name,
@@ -217,10 +216,6 @@ class ProjectViewSet(viewsets.ModelViewSet):
             ),
             "time": project.created_at,
         }
-
-        pv = ProjectVariant.objects.filter(project=project)
-        variants = list(pv.variants)
-        variants_json = json.dumps(variants)
 
         return Response(
             {
@@ -232,10 +227,17 @@ class ProjectViewSet(viewsets.ModelViewSet):
                     "significant_variants": 1,
                     "uncertain_variants": 803,
                 },
-                "variants": variants,
             }
         )
 
+class ProjectVariantViewset(viewsets.ViewSet):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def retrieve(self, request, pk=None):
+        project = Project.objects.get(id=pk)
+        pv = ProjectVariant.objects.get(project=project)
+        variants = [model_to_dict(variant) for variant in pv.variants.all()][:10]
+        return Response(variants)
 
 class FileDownloadView(views.APIView):
 
