@@ -24,8 +24,15 @@ from rest_framework.parsers import MultiPartParser
 from rest_framework.response import Response
 
 from cosapweb.api import serializers
-from cosapweb.api.models import (Action, File, Project, ProjectFile,
-                                 ProjectTask, ProjectVariant, Variant)
+from cosapweb.api.models import (
+    Action,
+    File,
+    Project,
+    ProjectFile,
+    ProjectTask,
+    ProjectVariant,
+    Variant,
+)
 from cosapweb.api.permissions import IsOwnerOrDoesNotExist, OnlyAdminToList
 
 from ..common.utils import get_user_dir
@@ -76,10 +83,10 @@ class GetUserViewSet(viewsets.ViewSet):
             return Response({"user": user.email}, status=status.HTTP_200_OK)
 
         return Response(status=status.HTTP_404_NOT_FOUND)
-    
+
     def update(self, request):
         """
-            Change password
+        Change password
         """
         request_token = (
             request.headers["Authorization"].split()[1]
@@ -89,8 +96,8 @@ class GetUserViewSet(viewsets.ViewSet):
 
         if request_token and Token.objects.filter(key=request_token).exists():
             user = Token.objects.get(key=request_token).user
-            if user.check_password(request.data['old_password']):
-                user.set_password(request.data['new_password'])
+            if user.check_password(request.data["old_password"]):
+                user.set_password(request.data["new_password"])
                 user.save()
                 return Response(status=status.HTTP_200_OK)
             else:
@@ -188,7 +195,7 @@ class ProjectViewSet(viewsets.ModelViewSet):
 
         project_files.save()
 
-        #Create project directory under user directory
+        # Create project directory under user directory
         user_dir = get_user_dir(user)
         project_dir = os.path.join(user_dir, f"{new_project.id}_{new_project.name}")
         os.makedirs(project_dir)
@@ -202,7 +209,7 @@ class ProjectViewSet(viewsets.ModelViewSet):
             print(e)
             new_project.status = "FAILED"
             new_project.save()
-        
+
         return HttpResponse(status=status.HTTP_201_CREATED)
 
     def retrieve(self, request, pk):
@@ -222,6 +229,8 @@ class ProjectViewSet(viewsets.ModelViewSet):
                 "metadata": project_metadata,
                 "coverage_stats": {"mean_coverage": 152, "coverage_hist": []},
                 "mapping_stats": {"percetange_of_mapped_reads": 99.21},
+                "msi_stats": {"msi_score": 0.32},
+                "cnv_stats": {"total_cnvs": 6},
                 "variant_stats": {
                     "total_variants": 8313,
                     "significant_variants": 1,
@@ -229,6 +238,7 @@ class ProjectViewSet(viewsets.ModelViewSet):
                 },
             }
         )
+
 
 class ProjectVariantViewset(viewsets.ViewSet):
     permission_classes = [permissions.IsAuthenticated]
@@ -238,6 +248,7 @@ class ProjectVariantViewset(viewsets.ViewSet):
         pv = ProjectVariant.objects.get(project=project)
         variants = [model_to_dict(variant) for variant in pv.variants.all()][:10]
         return Response(variants)
+
 
 class FileDownloadView(views.APIView):
 
