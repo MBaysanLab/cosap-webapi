@@ -12,7 +12,7 @@ from django.contrib.auth import get_user_model
 from django.db.models import Q
 from django.db.models.query import QuerySet
 from django.forms.models import model_to_dict
-from django.http import Http404, HttpResponse, StreamingHttpResponse
+from django.http import Http404, HttpResponse, StreamingHttpResponse, FileResponse
 from django.core import serializers as django_serializers
 from django_drf_filepond.parsers import PlainTextParser, UploadChunkParser
 from django_drf_filepond.renderers import PlainTextRenderer
@@ -24,6 +24,8 @@ from rest_framework.parsers import MultiPartParser
 from rest_framework.response import Response
 
 from cosapweb.api import serializers
+from cosapweb.api.createpdf import create_pdf
+
 from cosapweb.api.models import (
     Action,
     File,
@@ -39,6 +41,34 @@ from ..common.utils import get_user_dir
 from .celery_handlers import submit_cosap_dna_job
 
 USER = get_user_model()
+class VariantFeaturesPdfViewSet(viewsets.ViewSet):
+    permission_classes = [permissions.IsAuthenticated]
+    def create(self, request):
+        variant_ids = request.data.get('ids', [])
+
+        if not variant_ids:
+            return Response({'detail': 'No variant_ids provided'}, status=status.HTTP_400_BAD_REQUEST)
+
+        variants = Variant.objects.filter(id__in=variant_ids)
+
+        if not variants.exists():
+            return Response({'detail': 'No variants found for given IDs in the specified project'}, status=status.HTTP_404_NOT_FOUND)
+
+        # Collect all variants from the ProjectVariants
+
+        # Convert variants to dictionaries
+        variants_dict = [model_to_dict(variant) for variant in variants]
+
+        # Create pdf from variants data. You will have to implement this yourself.
+        pdf_path = create_pdf(variants_dict)
+
+        if not pdf_path:
+            return Response({'detail': 'Failed to create PDF'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+        response = FileResponse(open(pdf_path, 'rb'), content_type='application/pdf')
+        response['Content-Disposition'] = 'attachment; filename="Report.pdf"'
+
+        return response
 
 
 class UserViewSet(
@@ -362,3 +392,66 @@ class FileViewSet(ProcessView, PatchView, viewsets.ViewSet):
 
     def patch(self, request, *args, **kwargs):
         return super().patch(request, *args, **kwargs)
+
+class VairantDetailViewSet(viewsets.ModelViewSet):
+
+    permission_classes = [permissions.IsAuthenticated]
+    queryset = Project.objects.order_by("-created_at")
+    serializer_class = serializers.ProjectSerializer
+
+    def get_queryset(self):
+        """
+        Get the list of items for this view.
+
+        Overridden only to return projects where the requesting user
+        is the creator of the project or a collaborator in the project.
+        """
+        queryset = self.queryset
+        if isinstance(queryset, QuerySet):
+            user = self.request.user
+            queryset = queryset.filter(Q(user=user) | Q(collaborators=user))
+        return queryset
+
+    def retrieve(self, request,pk):
+
+        transcriptText = "Clicked " + pk + ". variant"
+
+        response_data = {
+            "overview": {
+                "depthMin": "50",
+                "depthMax": "200",
+                "depthValue": "85",
+                "runPercent": "100",
+                "transcriptText": transcriptText,
+                "cDNAText": "c.129",
+                "accountPercent": "100",
+                "varFraction": "75",
+                "sequenceFirstText": "ABCD",
+                "sequenceSecondText": "D",
+                "refAltFirstText": "ABCD",
+                "refAltSecondText": "C",
+                "aminoacidFirstText": "QWERT",
+                "aminoacidSecondText": "T",
+                "communityPercent": "100",
+                "proteinText": "protein1"
+            },
+            "details": {
+                "aliasesTags": ["Allies1", "Allies2", "Allies3", "Allies4", "Allies5"],
+                "variantTypesTags": ["var1", "var2", "var3"],
+                "hgvsTags": ["HGVS", "HGVS", "HGVS"],
+                "maneTags": ["MAne1", "MAne1", "MAne1"],
+                "geneTag": [pk],
+                "alleleRegistryTag": ["2"],
+                "clinTag": ["x2"],
+                "openCRAVATTag": ["x3"],
+                "transcriptTag": ["ens12"],
+                "refBuildValue": "gr",
+                "enssemblyVersionValue": "75",
+                "chrValue": "9",
+                "startValue": "3",
+                "stopValue": "3",
+                "refBasesValue": "A"
+            }
+        }
+
+        return Response(response_data)
