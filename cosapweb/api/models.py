@@ -81,16 +81,18 @@ class Project(models.Model):
         return self.name
 
 
-class ProjectResult(models.Model):
+class ProjectSummary(models.Model):
     project = models.ForeignKey(Project, on_delete=models.CASCADE)
     mapped_reads = models.FloatField()
     mean_coverage = models.FloatField()
     number_of_variants = models.IntegerField()
     number_of_significant_variants = models.IntegerField()
     number_of_vus = models.IntegerField()
+    msi_score = models.FloatField(null=True, blank=True)
+    cnv_count = models.IntegerField(null=True, blank=True)
 
 
-class Variant(models.Model):
+class SNV(models.Model):
     location = models.CharField(max_length=256)
     ref = models.CharField(max_length=256)
     alt = models.CharField(max_length=256)
@@ -117,10 +119,32 @@ class Variant(models.Model):
     other_info = models.TextField(max_length=256, null=True)
 
 
-class ProjectVariant(models.Model):
+class ProjectSNVs(models.Model):
     project = models.ForeignKey(Project, null=True, on_delete=models.CASCADE)
-    variants = models.ManyToManyField(Variant)
+    snvs = models.ManyToManyField(SNV)
 
+class ProjectSNVData(models.Model):
+    project = models.ForeignKey(Project, null=True, on_delete=models.CASCADE)
+    snv = models.ForeignKey(SNV, null=True, on_delete=models.SET_NULL)
+    allele_frequency = models.FloatField(default=0.43)
+
+class SV(models.Model):
+    pass
+
+class ProjectSV(models.Model):
+    pass
+
+class CNV(models.Model):
+    pass
+
+class ProjectCNV(models.Model):
+    pass
+
+class GeneFusion(models.Model):
+    pass
+
+class ProjectGeneFusion(models.Model):
+    pass
 
 def user_directory_path(instance, filename):
     return os.path.join(f"{instance.user.id}_{instance.user.email}", "files", filename)

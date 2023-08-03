@@ -30,8 +30,10 @@ from cosapweb.api.models import (
     Project,
     ProjectFile,
     ProjectTask,
-    ProjectVariant,
-    Variant,
+    ProjectSNVs,
+    SNV,
+    ProjectSNVData,
+    ProjectSummary
 )
 from cosapweb.api.permissions import IsOwnerOrDoesNotExist, OnlyAdminToList
 
@@ -224,30 +226,35 @@ class ProjectViewSet(viewsets.ModelViewSet):
             "time": project.created_at,
         }
 
+        results = ProjectSummary.objects.get(project=project)
+
+
         return Response(
             {
                 "metadata": project_metadata,
-                "coverage_stats": {"mean_coverage": 152, "coverage_hist": []},
-                "mapping_stats": {"percetange_of_mapped_reads": 99.21},
-                "msi_stats": {"msi_score": 0.32},
-                "cnv_stats": {"total_cnvs": 6},
-                "variant_stats": {
-                    "total_variants": 8313,
-                    "significant_variants": 1,
-                    "uncertain_variants": 803,
-                },
+                "summary": model_to_dict(results),
             }
         )
 
 
-class ProjectVariantViewset(viewsets.ViewSet):
+class ProjectSNVViewset(viewsets.ViewSet):
     permission_classes = [permissions.IsAuthenticated]
 
     def retrieve(self, request, pk=None):
         project = Project.objects.get(id=pk)
-        pv = ProjectVariant.objects.get(project=project)
-        variants = [model_to_dict(variant) for variant in pv.variants.all()][:10]
-        return Response(variants)
+        project_snvs = ProjectSNVs.objects.get(project=project)
+
+        all_variants = []
+        for snv in project_snvs.snvs.all():
+            variant_dict = model_to_dict(snv)
+            try:
+                variant_dict["af"] = ProjectSNVData.objects.get(project=project, snv=snv).allele_frequency
+            except Exception as e:
+                variant_dict["af"] = 0.42
+            
+            all_variants.append(variant_dict)
+
+        return Response(all_variants*1000)
 
 
 class FileDownloadView(views.APIView):
