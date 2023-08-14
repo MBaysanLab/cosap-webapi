@@ -22,6 +22,7 @@ from rest_framework.authtoken.models import Token
 from rest_framework.authtoken.views import ObtainAuthToken
 from rest_framework.parsers import MultiPartParser
 from rest_framework.response import Response
+import re
 
 from cosapweb.api import serializers
 from cosapweb.api.models import (
@@ -33,11 +34,11 @@ from cosapweb.api.models import (
     ProjectSNVs,
     SNV,
     ProjectSNVData,
-    ProjectSummary
+    ProjectSummary,
 )
 from cosapweb.api.permissions import IsOwnerOrDoesNotExist, OnlyAdminToList
 
-from ..common.utils import get_user_dir
+from ..common.utils import get_user_dir,get_user_files_dir
 from .celery_handlers import submit_cosap_dna_job
 
 USER = get_user_model()
@@ -161,7 +162,7 @@ class ProjectViewSet(viewsets.ModelViewSet):
         queryset = self.queryset
         if isinstance(queryset, QuerySet):
             user = self.request.user
-            queryset = queryset.filter(Q(user=user) | Q(collaborators=user))
+            queryset = queryset.filter(Q(user=user) | Q(collaborators=user) | Q(is_demo=True))
         return queryset
 
     def create(self, request, *args, **kwargs):
@@ -228,7 +229,6 @@ class ProjectViewSet(viewsets.ModelViewSet):
 
         results = ProjectSummary.objects.get(project=project)
 
-
         return Response(
             {
                 "metadata": project_metadata,
@@ -248,75 +248,122 @@ class ProjectSNVViewset(viewsets.ViewSet):
         for snv in project_snvs.snvs.all():
             variant_dict = model_to_dict(snv)
             try:
-                variant_dict["af"] = ProjectSNVData.objects.get(project=project, snv=snv).allele_frequency
+                variant_dict["af"] = ProjectSNVData.objects.get(
+                    project=project, snv=snv
+                ).allele_frequency
             except Exception as e:
                 variant_dict["af"] = 0.42
-            
+
             all_variants.append(variant_dict)
 
-        return Response(all_variants*1000)
+        return Response(all_variants)
 
 
 class FileDownloadView(views.APIView):
-
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request, path, *args, **kwargs):
         user = request.user
-        user_dir = get_user_dir(user)
-        file_path = os.path.join(user_dir, path)
+        user_files_dir = get_user_files_dir(user)
+        file_path = os.path.join(user_files_dir, path)
 
-        if os.path.exists(file_path):
-            filename = os.path.basename(file_path)
-            response = StreamingHttpResponse(
-                FileWrapper(
-                    open(file_path, "rb"),
-                ),
-                content_type=mimetypes.guess_type(file_path)[0],
-            )
-            response["Content-Length"] = os.path.getsize(file_path)
-            response["Content-Disposition"] = f"attachment; filename={filename}"
-            return response
-        raise Http404
+        if not os.path.exists(file_path):
+            raise Http404
+        
+        filename = os.path.basename(file_path)
+        response = StreamingHttpResponse(
+            FileWrapper(
+                open(file_path, "rb"),
+            ),
+            content_type=mimetypes.guess_type(file_path)[0],
+        )
+        response["Content-Length"] = os.path.getsize(file_path)
+        response["Content-Disposition"] = f"attachment; filename={filename}"
+        return response
+        
 
 
-class AligmentLoadView(views.APIView):
+# class AligmentLoadView(views.APIView):
+#     permission_classes = [permissions.IsAuthenticated]
+
+#     def build_view_args(filename, region, reference=None, optionArray=None):
+#         args = []
+
+#         if optionArray:
+#             args.extend(optionArray)
+
+#         if reference:
+#             args.append("-T")
+#             args.append(reference)
+
+#         args.append(filename)
+
+#         if region:
+#             args.append(region)
+
+#         return args
+
+#     def get(self, request, path):
+#         user = request.user
+#         user_dir = get_user_dir(user)
+#         file_path = os.path.join(user_dir, path)
+#         if os.path.exists(file_path):
+#             filename = os.path.basename(file_path)
+#             response = StreamingHttpResponse(
+#                 pysam.view(file_path, "chr1:1040655-1040695"),
+#                 content_type=mimetypes.guess_type(file_path)[0],
+#             )
+#             response["Content-Disposition"] = f"attachment; filename=calibrated.sam"
+#             return response
+#         raise Http404
+
+
+class IGVDataView(views.APIView):
     permission_classes = [permissions.IsAuthenticated]
 
-    def build_view_args(filename, region, reference=None, optionArray=None):
-        args = []
+    def ranged_data_response(self, range_header, path):
+        if not range_header:
+            return None
+        m = re.search("(\d+)-(\d*)", range_header)
+        if not m:
+            return "Error: unexpected range header syntax: {}".format(range_header)
 
-        if optionArray:
-            args.extend(optionArray)
+        size = os.path.getsize(path)
+        offset = int(m.group(1))
+        length = int(m.group(2) or size) - offset + 1
 
-        if reference:
-            args.append("-T")
-            args.append(reference)
+        data = None
+        with open(path, "rb") as f:
+            f.seek(offset)
+            data = f.read(length)
+            
+        response = HttpResponse(
+                data,
+                headers={
+                    "Content-Range": f"bytes {offset}-{offset + length - 1}/{size}",
+                },
+                content_type="application/octet-stream",
+            )
+        response.status_code = 206
 
-        args.append(filename)
-
-        if region:
-            args.append(region)
-
-        return args
+        return response
 
     def get(self, request, path):
+        if path.endswith(".bai"):
+            return FileDownloadView().get(request, path)
+        
         user = request.user
-        user_dir = get_user_dir(user)
-        file_path = os.path.join(user_dir, path)
-        if os.path.exists(file_path):
-            filename = os.path.basename(file_path)
-            response = StreamingHttpResponse(
-                pysam.view(file_path, "chr1:1040655-1040695"),
-                content_type=mimetypes.guess_type(file_path)[0],
-            )
-            response["Content-Disposition"] = f"attachment; filename=calibrated.sam"
-            return response
-        raise Http404
+        user_files_dir = get_user_files_dir(user)
+        file_path = os.path.join(user_files_dir, path)
+
+        if not os.path.exists(file_path):
+            raise Http404
+
+        range_header = request.headers.get("Range")
+        return self.ranged_data_response(range_header, file_path)
 
 
 class ActionViewSet(viewsets.ModelViewSet):
-
     permission_classes = [permissions.IsAuthenticated]
 
     queryset = Action.objects.order_by("-created_at")

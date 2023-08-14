@@ -76,9 +76,10 @@ class Project(models.Model):
     status = models.CharField(choices=PROJECT_STATUS_CHOICES, max_length=256)
     progress = models.SmallIntegerField(default=0)
     algorithms = models.JSONField(default=dict)
+    is_demo = models.BooleanField(default=False)
 
     def __str__(self):
-        return self.name
+        return f"{self.id} - {self.name}"
 
 
 class ProjectSummary(models.Model):
@@ -91,42 +92,53 @@ class ProjectSummary(models.Model):
     msi_score = models.FloatField(null=True, blank=True)
     cnv_count = models.IntegerField(null=True, blank=True)
 
+    def __str__(self) -> str:
+        return f"{self.project.name} - summary"
+
 
 class SNV(models.Model):
     location = models.CharField(max_length=256)
     ref = models.CharField(max_length=256)
     alt = models.CharField(max_length=256)
-    function = models.TextField(max_length=256, null=True)
-    gene_symbol = models.CharField(max_length=256, null=True)
-    consequence = models.TextField(max_length=256, null=True)
-    coding_consequece = models.TextField(max_length=256, null=True)
-    ens_gene = models.CharField(max_length=256, null=True)
-    feature = models.TextField(max_length=256, null=True)
-    hgvsc = models.CharField(max_length=256, null=True)
-    classification = models.CharField(max_length=256, null=True)
-    gnomad_af = models.FloatField(null=True)
-    aa_change = models.TextField(max_length=256, null=True)
-    rs_id = models.CharField(max_length=256, null=True)
-    sift_score = models.FloatField(null=True)
-    polyphen_score = models.FloatField(null=True)
-    cadd_score = models.FloatField(null=True)
-    interpro_domain = models.TextField(max_length=256, null=True)
-    clinical_significance = models.TextField(max_length=256, null=True)
-    cosmic_id = models.CharField(max_length=256, null=True)
-    clinvar_classification = models.TextField(max_length=256, null=True)
-    evidence = models.TextField(max_length=256, null=True)
-    orphanet_info = models.TextField(max_length=256, null=True)
-    other_info = models.TextField(max_length=256, null=True)
+    function = models.TextField(max_length=256, null=True, blank=True)
+    gene_symbol = models.CharField(max_length=256, null=True, blank=True)
+    consequence = models.TextField(max_length=256, null=True, blank=True)
+    coding_consequece = models.TextField(max_length=256, null=True, blank=True)
+    ens_gene = models.CharField(max_length=256, null=True, blank=True)
+    feature = models.TextField(max_length=256, null=True, blank=True)
+    hgvsc = models.CharField(max_length=256, null=True, blank=True)
+    classification = models.CharField(max_length=256, null=True, blank=True)
+    gnomad_af = models.FloatField(null=True, blank=True)
+    aa_change = models.TextField(max_length=256, null=True, blank=True)
+    rs_id = models.CharField(max_length=256, null=True, blank=True)
+    sift_score = models.FloatField(null=True, blank=True)
+    polyphen_score = models.FloatField(null=True, blank=True)
+    interpro_domain = models.TextField(max_length=256, null=True, blank=True)
+    clinical_significance = models.TextField(max_length=256, null=True, blank=True)
+    cosmic_id = models.CharField(max_length=256, null=True, blank=True)
+    clinvar_classification = models.TextField(max_length=256, null=True, blank=True)
+    evidence = models.TextField(max_length=256, null=True, blank=True)
+    orphanet_info = models.TextField(max_length=256, null=True, blank=True)
+    other_info = models.TextField(max_length=256, null=True, blank=True)
+
+    def __str__(self) -> str:
+        return f"{self.location} - {self.gene_symbol}"
 
 
 class ProjectSNVs(models.Model):
     project = models.ForeignKey(Project, null=True, on_delete=models.CASCADE)
     snvs = models.ManyToManyField(SNV)
 
+    def __str__(self) -> str:
+        return f"{self.project.id}_{self.project.name} - snvs"
+
 class ProjectSNVData(models.Model):
     project = models.ForeignKey(Project, null=True, on_delete=models.CASCADE)
     snv = models.ForeignKey(SNV, null=True, on_delete=models.SET_NULL)
     allele_frequency = models.FloatField(default=0.43)
+
+    def __str__(self) -> str:
+        return f"{self.project.id}_{self.project.name} - snv data"
 
 class SV(models.Model):
     pass

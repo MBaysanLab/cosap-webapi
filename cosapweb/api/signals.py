@@ -7,7 +7,7 @@ from django.dispatch import receiver
 from django_drf_filepond.models import TemporaryUpload, TemporaryUploadChunked
 from rest_framework.authtoken.models import Token
 
-from ..common.utils import get_user_dir, create_and_get_user_files_dir
+from ..common.utils import get_user_dir, get_user_files_dir
 from .models import Action, File, Project, Report
 
 
@@ -93,7 +93,7 @@ def save_tmp_upload(sender, instance, **kwargs):
     fl = File.objects.get(uuid=tmp_id)
 
     permanent_file_path = os.path.join(
-        create_and_get_user_files_dir(fl.user), f"{fl.id}_{upload_file_name}"
+        get_user_files_dir(fl.user), f"{fl.id}_{upload_file_name}"
     )
     shutil.move(tu.get_file_path(), permanent_file_path)
 
