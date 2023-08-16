@@ -66,13 +66,15 @@ class UserViewSet(
     queryset = USER.objects.all()
 
 
-class GetUserViewSet(viewsets.ViewSet):
+class VerifyUserVeiwSet(viewsets.ViewSet):
     """
     View to verify user with token and get email.
     """
 
     authentication_classes = []
     permission_classes = [permissions.AllowAny]
+    serializer_class = serializers.UserSerializer
+    
 
     def create(self, request):
         request_token = (
@@ -83,7 +85,8 @@ class GetUserViewSet(viewsets.ViewSet):
 
         if request_token and Token.objects.filter(key=request_token).exists():
             user = Token.objects.get(key=request_token).user
-            return Response({"user": user.email}, status=status.HTTP_200_OK)
+            user_serializer = self.serializer_class(user)
+            return Response(user_serializer.data, status=status.HTTP_200_OK)
 
         return Response(status=status.HTTP_404_NOT_FOUND)
 
