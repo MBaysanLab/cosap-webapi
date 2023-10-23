@@ -41,11 +41,23 @@ def auto_extract_file_extension(sender, instance, created, **kwargs):
     """
     FILE_EXTENSIONS = {
         "FQ": ["fastq", "fq"],
+        "FA": ["fa", "fasta"],
+        "SAM": ["sam"],
         "BAM": ["bam"],
+        "CRAM": ["cram"],  
         "BED": ["bed", "bed6"],
         "VCF": ["vcf"],
-        "TXT": ["txt"],
+        "TXT": ["txt", "tsv", "csv"],
         "JSON": ["json"],
+        "GFF": ["gff", "gff3"],
+        "GTF": ["gtf"],
+        "WIG": ["wig", "bigwig"],
+        "BPK": ["bpk"],
+        "PDB": ["pdb"],
+        "CIF": ["cif"],
+        "BIB": ["bib"],
+        "SRA": ["sra"],
+        "MAF": ["maf"],
     }
 
     if instance.name:
@@ -55,6 +67,8 @@ def auto_extract_file_extension(sender, instance, created, **kwargs):
         for file_type, extensions in FILE_EXTENSIONS.items():
             if len(set(extensions).intersection(set(suffixes))) > 0:
                 instance.file_type = file_type
+            else:
+                instance.file_type = "UNKNOWN"
 
         instance.save()
 

@@ -69,7 +69,7 @@ class Project(models.Model):
     ]
 
     user = models.ForeignKey(USER, null=True, on_delete=models.SET_NULL)
-    collaborators = models.ManyToManyField(USER, related_name="projects")
+    collaborators = models.ManyToManyField(USER, null=True, blank=True, related_name="projects")
     created_at = models.DateTimeField(auto_now_add=True)
     project_type = models.CharField(choices=PROJECT_TYPE_CHOICES, max_length=256)
     name = models.CharField(max_length=256)
@@ -164,21 +164,6 @@ def user_directory_path(instance, filename):
 
 class File(models.Model):
 
-    FASTQ = "FQ"
-    BAM = "BAM"
-    BED = "BED"
-    VCF = "VCF"
-    TEXT = "TXT"
-    JSON = "JSON"
-    FILE_TYPES = [
-        (FASTQ, "fastq"),
-        (BAM, "bam"),
-        (BED, "bed"),
-        (VCF, "vcf"),
-        (TEXT, "txt"),
-        (JSON, "json"),
-    ]
-
     TUMOR = "TUMOR"
     NORMAL = "NORMAL"
     SAMPLE_TYPES = [(TUMOR, "tumor"), (NORMAL, "normal")]
@@ -187,7 +172,7 @@ class File(models.Model):
     uuid = models.CharField(max_length=256, default=uuid.uuid4, editable=True)
     uploaded_at = models.DateTimeField(auto_now_add=True)
     name = models.CharField(max_length=256, blank=True, null=True)
-    file_type = models.CharField(choices=FILE_TYPES, max_length=256)
+    file_type = models.CharField(max_length=64, blank=True, null=True)
     sample_type = models.CharField(
         choices=SAMPLE_TYPES, null=True, blank=True, max_length=256
     )
@@ -197,7 +182,7 @@ class File(models.Model):
         return f"{self.id}-{self.name}"
 
 
-class ProjectFile(models.Model):
+class ProjectFiles(models.Model):
     project = models.ForeignKey(Project, null=True, on_delete=models.CASCADE)
     files = models.ManyToManyField(File)
 

@@ -1,5 +1,5 @@
 import os
-
+from datetime import datetime
 from django.conf import settings
 
 
@@ -63,6 +63,15 @@ def get_user_files_dir(user):
     os.makedirs(user_files_path, exist_ok=True)
     return user_files_path
 
+def get_project_dir(project):
+    return os.path.join(get_user_dir(project.user), f"{project.id}_{project.name}")
+
+def convert_file_relative_path_to_absolute_path(file_path: str) -> str:
+    """
+    Converts relative path to absolute path.
+    """
+    return os.path.join(settings.MEDIA_ROOT, file_path)
+
 def wait_file_update_complete(file_path: str, timeout: int = 600) -> bool:
     """
     Waits for file to be updated.
@@ -75,3 +84,92 @@ def wait_file_update_complete(file_path: str, timeout: int = 600) -> bool:
             return
         time.sleep(0.1)
     raise Exception("File upload not complete")
+
+def get_relative_to_media_root(path):
+    return os.path.relpath(path, settings.MEDIA_ROOT)
+
+def create_chonky_filemap(dir, project_name):
+
+    """
+    Walks directory and returns Chonky file map and root folder id.
+    """
+    def get_stats(path):
+        st = os.stat(path)
+        return {
+            'id': f"{st.st_dev}-{st.st_ino}",
+            'size': st.st_size,
+            'modDate': str(datetime.fromtimestamp(st.st_mtime)),
+        }
+
+    def walk(dir_path, root_dir_id, root_folder_name):
+        for entry in os.scandir(dir_path):
+            full_path = entry.path
+            rel_path = get_relative_to_media_root(entry)
+            parent_stats = get_stats(dir_path)
+            parent_id = f"{parent_stats['id']}"
+            stats = get_stats(full_path)
+            file_id = f"{stats['id']}"
+
+            if entry.is_dir():
+                if file_id not in file_map:
+                    file_map[file_id] = {
+                        'id': file_id,
+                        'name': entry.name,
+                        'isDir': True,
+                        'childrenIds': [],
+                        'path': rel_path,
+                    }
+
+                    if file_id != parent_id:
+                        file_map[file_id]['parentId'] = parent_id
+
+                if parent_id not in file_map:
+                    file_map[parent_id] = {
+                        'id': parent_id,
+                        'name': root_folder_name if parent_id == root_dir_id else entry.name,
+                        'isDir': True,
+                        'childrenIds': [file_id],
+                        'path': rel_path,
+                    }
+                else:
+                    file_map[parent_id]['childrenIds'].append(file_id)
+
+                yield from walk(full_path, root_dir_id, root_folder_name)
+
+            elif entry.is_file():
+                if parent_id not in file_map:
+                    file_map[parent_id] = {
+                        'id': parent_id,
+                        'name': root_folder_name if parent_id == root_dir_id else entry.name,
+                        'isDir': True,
+                        'childrenIds': [file_id],
+                        'path': get_relative_to_media_root(dir_path),
+                    }
+                else:
+                    file_map[parent_id]['childrenIds'].append(file_id)
+
+                file_map[file_id] = {
+                    'id': file_id,
+                    'name': entry.name,
+                    'parentId': parent_id,
+                    'size': stats['size'],
+                    'modDate': stats['modDate'],
+                    'path': rel_path,
+                }
+
+                yield full_path
+
+    if not os.path.exists(dir):
+        return None
+
+    root_dir = os.path.abspath(dir)
+    root_dir_id = f"{os.stat(root_dir).st_dev}-{os.stat(root_dir).st_ino}"
+    
+    file_map = {}
+    for _ in walk(root_dir, root_dir_id, project_name):
+        pass
+
+    return {
+        'root_folder_id': root_dir_id,
+        'file_map': file_map
+    }

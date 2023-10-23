@@ -16,9 +16,9 @@ router.register(r"variants", views.ProjectSNVViewset, basename="project_variants
 urlpatterns = [
     path("", include(router.urls)),
     path("files", views.FileViewSet.as_view({"get":"list", "post":"create"})),
-    path("change_password/", views.VerifyUserVeiwSet.as_view({"put":"update"})),
+    re_path(r"files/(?P<project_id>[0-9a-zA-Z]+)/?$", views.FileViewSet.as_view({"get":"list"})),
     re_path(r"^files/patch/(?P<chunk_id>[0-9a-zA-Z]{22})$", views.FileViewSet.as_view({"patch":"patch"})),
-    # path("files/<path:path>", views.FileDownloadView.as_view()),
-    # path("alignments/<path:path>", views.AligmentLoadView.as_view()),
-    path("igv/<path:path>", views.IGVDataView.as_view()),
+    re_path(r"file/(?P<b64_string>.+)/?$", views.FileViewSet.as_view({"get":"download"})),
+    path("change_password/", views.VerifyUserVeiwSet.as_view({"put":"update"})),
+    re_path(r"igv/(?P<b64_string>.+)/?$", views.IGVDataView.as_view()),
 ]
