@@ -15,7 +15,7 @@ router.register(r"variants", views.ProjectSNVViewset, basename="project_variants
 
 urlpatterns = [
     path("", include(router.urls)),
-    path("files", views.FileViewSet.as_view({"get":"list", "post":"create"})),
+    re_path(r"files/?$", views.FileViewSet.as_view({"get":"list", "post":"create"})),
     re_path(r"files/(?P<project_id>[0-9a-zA-Z]+)/?$", views.FileViewSet.as_view({"get":"list"})),
     re_path(r"^files/patch/(?P<chunk_id>[0-9a-zA-Z]{22})$", views.FileViewSet.as_view({"patch":"patch"})),
     re_path(r"file/(?P<b64_string>.+)/?$", views.FileViewSet.as_view({"get":"download"})),

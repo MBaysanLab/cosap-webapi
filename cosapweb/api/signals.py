@@ -7,7 +7,7 @@ from django.dispatch import receiver
 from django_drf_filepond.models import TemporaryUpload, TemporaryUploadChunked
 from rest_framework.authtoken.models import Token
 
-from ..common.utils import get_user_dir, get_user_files_dir
+from ..common.utils import get_project_dir, get_user_files_dir
 from .models import Action, File, Project, Report
 
 
@@ -29,6 +29,16 @@ def auto_delete_file_on_delete(sender, instance, **kwargs):
     if instance.file:
         if os.path.isfile(instance.file.path):
             os.remove(instance.file.path)
+
+@receiver(post_delete, sender=Project)
+def auto_delete_project_dir_on_delete(sender, instance, **kwargs):
+    """
+    Deletes project directory from filesystem
+    when corresponding `Project` object is deleted.
+    """
+    project_dir = get_project_dir(instance)
+    if os.path.isdir(project_dir):
+        shutil.rmtree(project_dir)
 
 
 @receiver(post_save, sender=File)
@@ -98,8 +108,9 @@ def auto_create_action(sender, instance, created, **kwargs):
 @receiver(post_delete, sender=TemporaryUploadChunked)
 def save_tmp_upload(sender, instance, **kwargs):
     """
-    Saves temporary upload to the file system.
+    Waits for last post and saves temporary upload to the file system.
     """
+
     tmp_id = instance.upload_id
     tu = TemporaryUpload.objects.get(upload_id=tmp_id)
     upload_file_name = tu.upload_name
@@ -114,5 +125,3 @@ def save_tmp_upload(sender, instance, **kwargs):
     fl.name = upload_file_name
     fl.file = permanent_file_path
     fl.save()
-
-    instance.delete()

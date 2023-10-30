@@ -1,6 +1,7 @@
 import os
 from datetime import datetime
 from django.conf import settings
+import re
 
 
 def levenshtein(s1, s2):
@@ -37,10 +38,17 @@ def match_read_pairs(file_list: list) -> list[tuple]:
     read_2 = []
 
     for file, file_name in file_obj_names:
-        if "_R1_" in file_name:
-            read_1.append((file,file_name))
-        elif "_R2_" in file_name:
-            read_2.append((file, file_name))
+        # Finds read 1 files
+        pattern_r1 = r'^(.*?)(?:_1|R1|r1)\.(.*?)$'
+        pattern_r2 = r'^(.*?)(?:_2|R2|r2)\.(.*?)$'
+
+        match_r1 = re.match(pattern_r1, file_name)
+        match_r2 = re.match(pattern_r2, file_name)
+
+        if match_r1:
+            read_1.append((file, match_r1.group(1) + '_1.' + match_r1.group(2)))
+        elif match_r2:
+            read_2.append((file, match_r2.group(1) + '_2.' + match_r2.group(2)))
 
     if len(read_1) != len(read_2):
         raise ValueError("Some pairs are missing.")
@@ -51,7 +59,11 @@ def match_read_pairs(file_list: list) -> list[tuple]:
         if levenshtein(pair[0][1], pair[1][1]) != 1:
             raise ValueError("Some pairs are not matching.")
     
-    return [(pair[0][0].file.path, pair[1][0].file.path) for pair in pair_list]
+    pair_list = [(pair[0][0].file.path, pair[1][0].file.path) for pair in pair_list]
+    if len(pair_list) == 0:
+        raise ValueError("No pairs found.")
+    
+    return pair_list
 
 def get_user_dir(user):
     user_path = f"{user.id}_{user.email}"

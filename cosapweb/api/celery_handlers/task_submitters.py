@@ -21,7 +21,7 @@ def submit_cosap_dna_job(project_id: int):
         else None
     )
 
-    normal_pairs = match_read_pairs([file for file in normal_files])[0]
+    normal_pairs = match_read_pairs([file for file in normal_files])[0] if normal_files else None
     tumor_pairs = match_read_pairs([file for file in tumor_files])
 
     mappers = project.algorithms["aligner"]

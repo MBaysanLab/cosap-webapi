@@ -22,6 +22,7 @@ from django_drf_filepond.renderers import PlainTextRenderer
 from django_drf_filepond.views import PatchView, ProcessView
 from rest_framework import mixins, permissions, status, views, viewsets
 from rest_framework.authtoken.models import Token
+from rest_framework.decorators import action
 from rest_framework.authtoken.views import ObtainAuthToken
 from rest_framework.parsers import MultiPartParser
 from rest_framework.response import Response
@@ -47,7 +48,7 @@ from ..common.utils import (
     get_user_dir,
     get_project_dir,
     create_chonky_filemap,
-    convert_file_relative_path_to_absolute_path
+    convert_file_relative_path_to_absolute_path,
 )
 from .celery_handlers import submit_cosap_dna_job
 
@@ -192,9 +193,10 @@ class ProjectViewSet(viewsets.ModelViewSet):
             status="PENDING",
         )
 
-        normal_file_ids = json.loads(request.POST.get("normal_files"))
-        tumor_file_ids = json.loads(request.POST.get("tumor_files"))
-        bed_file_ids = json.loads(request.POST.get("bed_files"))
+
+        normal_file_ids = json.loads(request.POST.get("normal_files","[]")) 
+        tumor_file_ids = json.loads(request.POST.get("tumor_files", "[]"))
+        bed_file_ids = json.loads(request.POST.get("bed_files", "[]"))
 
         project_files = ProjectFiles.objects.create(project=new_project)
 
@@ -223,7 +225,7 @@ class ProjectViewSet(viewsets.ModelViewSet):
             ProjectTask.objects.create(project=new_project, task_id=task_id)
 
         except Exception as e:
-            print(e)
+            print(f"Error submitting job: {e}")
             new_project.status = "FAILED"
             new_project.save()
 
@@ -250,6 +252,25 @@ class ProjectViewSet(viewsets.ModelViewSet):
             },
             status=status.HTTP_200_OK,
         )
+    
+    @action(detail=True, methods=["post"])
+    def rerun_project(self, request, pk=None):
+        project = Project.objects.get(id=pk)
+        project.status = "PENDING"
+        project.save()
+
+        try:
+            pool = ThreadPool(processes=1)
+            async_result = pool.apply_async(submit_cosap_dna_job, (project.id,))
+            task_id = async_result.get()
+            ProjectTask.objects.create(project=project, task_id=task_id)
+
+        except Exception as e:
+            print(f"Error submitting job: {e}")
+            project.status = "FAILED"
+            project.save()
+
+        return HttpResponse(status=status.HTTP_200_OK)
 
 
 class ProjectSNVViewset(viewsets.ViewSet):
@@ -346,9 +367,15 @@ class FileViewSet(ProcessView, PatchView, viewsets.ViewSet):
     renderer_classes = (PlainTextRenderer, JSONRenderer)
 
     def list(self, request, project_id=None):
-        if not project_id:
-            files = [file.filename for file in File.objects.filter(user=request.user)]
-        else:
+        return_type = request.GET.get("return_type")
+        sample_type = (
+            request.GET.get("sample_type").upper()
+            if request.GET.get("sample_type")
+            else None
+        )
+        file_type = request.GET.get("file_type").upper() if request.GET.get("file_type") else None
+
+        if return_type and (return_type == "projectFileMap"):
             project = Project.objects.get(id=project_id)
 
             if not project:
@@ -356,7 +383,27 @@ class FileViewSet(ProcessView, PatchView, viewsets.ViewSet):
 
             project_dir = get_project_dir(project)
             files = create_chonky_filemap(project_dir, project.name)
+            return Response(files)
 
+        if sample_type:
+            files = File.objects.filter(
+                    user=request.user, sample_type=sample_type)
+            files = {
+                files[i].uuid: f"{i+1} - {files[i].name}"
+                for i in range(len(files))
+            }
+            return Response(files)
+
+        if file_type:
+            files = {
+                file.uuid: f"{file.project.name} - {file.name}"
+                for file in File.objects.filter(
+                    user=request.user, file_type=file_type
+                )
+            }
+            return Response(files)
+
+        files = [file.filename for file in File.objects.filter(user=request.user)]
         return Response(files)
 
     def create(self, request, *args, **kwargs):

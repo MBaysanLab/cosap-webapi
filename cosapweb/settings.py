@@ -51,9 +51,6 @@ CORS_ALLOW_HEADERS = [
 ]
 CORS_ALLOW_CREDENTIALS = True
 
-DJANGO_DRF_FILEPOND_UPLOAD_TMP = os.path.join(BASE_DIR, "filepond_temp_files")
-DJANGO_DRF_FILEPOND_FILE_STORE_PATH = BASE_DIR
-
 # Application definition
 INSTALLED_APPS = [
     "django.contrib.admin",
@@ -160,6 +157,9 @@ USE_TZ = True
 # Stored files
 
 MEDIA_ROOT = os.path.join(BASE_DIR, 'data/')
+
+DJANGO_DRF_FILEPOND_UPLOAD_TMP = os.path.join(MEDIA_ROOT, "filepond_temp_files")
+DJANGO_DRF_FILEPOND_FILE_STORE_PATH = MEDIA_ROOT
 
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/4.0/howto/static-files/

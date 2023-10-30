@@ -69,7 +69,7 @@ class Project(models.Model):
     ]
 
     user = models.ForeignKey(USER, null=True, on_delete=models.SET_NULL)
-    collaborators = models.ManyToManyField(USER, null=True, blank=True, related_name="projects")
+    collaborators = models.ManyToManyField(USER, blank=True, related_name="projects")
     created_at = models.DateTimeField(auto_now_add=True)
     project_type = models.CharField(choices=PROJECT_TYPE_CHOICES, max_length=256)
     name = models.CharField(max_length=256)
@@ -183,7 +183,7 @@ class File(models.Model):
 
 
 class ProjectFiles(models.Model):
-    project = models.ForeignKey(Project, null=True, on_delete=models.CASCADE)
+    project = models.ForeignKey(Project, on_delete=models.CASCADE)
     files = models.ManyToManyField(File)
 
     def __str__(self):
