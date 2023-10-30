@@ -1,7 +1,8 @@
 import os
 
 from ...celery import celery_app
-from ...common.utils import match_read_pairs, wait_file_update_complete, get_project_dir
+from ...common.utils import (get_project_dir, match_read_pairs,
+                             wait_file_update_complete)
 from ..models import Project, ProjectFiles
 
 
@@ -21,7 +22,9 @@ def submit_cosap_dna_job(project_id: int):
         else None
     )
 
-    normal_pairs = match_read_pairs([file for file in normal_files])[0] if normal_files else None
+    normal_pairs = (
+        match_read_pairs([file for file in normal_files])[0] if normal_files else None
+    )
     tumor_pairs = match_read_pairs([file for file in tumor_files])
 
     mappers = project.algorithms["aligner"]

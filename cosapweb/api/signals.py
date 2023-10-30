@@ -1,6 +1,7 @@
 import os
-from pathlib import PurePosixPath
 import shutil
+from pathlib import PurePosixPath
+
 from django.conf import settings
 from django.db.models.signals import post_delete, post_save
 from django.dispatch import receiver
@@ -30,6 +31,7 @@ def auto_delete_file_on_delete(sender, instance, **kwargs):
         if os.path.isfile(instance.file.path):
             os.remove(instance.file.path)
 
+
 @receiver(post_delete, sender=Project)
 def auto_delete_project_dir_on_delete(sender, instance, **kwargs):
     """
@@ -54,7 +56,7 @@ def auto_extract_file_extension(sender, instance, created, **kwargs):
         "FA": ["fa", "fasta"],
         "SAM": ["sam"],
         "BAM": ["bam"],
-        "CRAM": ["cram"],  
+        "CRAM": ["cram"],
         "BED": ["bed", "bed6"],
         "VCF": ["vcf"],
         "TXT": ["txt", "tsv", "csv"],

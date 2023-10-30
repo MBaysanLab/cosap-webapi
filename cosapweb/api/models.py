@@ -65,7 +65,7 @@ class Project(models.Model):
         (COMPLETED, "completed"),
         (IN_PROGRESS, "in_progress"),
         (CANCELLED, "cancelled"),
-        (FAILED, "failed")
+        (FAILED, "failed"),
     ]
 
     user = models.ForeignKey(USER, null=True, on_delete=models.SET_NULL)
@@ -132,6 +132,7 @@ class ProjectSNVs(models.Model):
     def __str__(self) -> str:
         return f"{self.project.id}_{self.project.name} - snvs"
 
+
 class ProjectSNVData(models.Model):
     project = models.ForeignKey(Project, null=True, on_delete=models.CASCADE)
     snv = models.ForeignKey(SNV, null=True, on_delete=models.SET_NULL)
@@ -140,23 +141,30 @@ class ProjectSNVData(models.Model):
     def __str__(self) -> str:
         return f"{self.project.id}_{self.project.name} - snv data"
 
+
 class SV(models.Model):
     pass
+
 
 class ProjectSV(models.Model):
     pass
 
+
 class CNV(models.Model):
     pass
+
 
 class ProjectCNV(models.Model):
     pass
 
+
 class GeneFusion(models.Model):
     pass
 
+
 class ProjectGeneFusion(models.Model):
     pass
+
 
 def user_directory_path(instance, filename):
     return os.path.join(f"{instance.user.id}_{instance.user.email}", "files", filename)
@@ -234,6 +242,7 @@ class Action(models.Model):
 
     class Meta:
         ordering = ["created_at"]
+
 
 class ProjectTask(models.Model):
     project = models.ForeignKey(Project, on_delete=models.CASCADE)

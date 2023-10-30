@@ -1,55 +1,41 @@
+import base64
 import json
 import mimetypes
 import os
+import re
 import tempfile
 from multiprocessing.pool import ThreadPool
 from pathlib import Path
 from urllib import request
 from wsgiref.util import FileWrapper
 
-
-import base64
-
 import pysam
 from django.contrib.auth import get_user_model
+from django.core import serializers as django_serializers
 from django.db.models import Q
 from django.db.models.query import QuerySet
 from django.forms.models import model_to_dict
 from django.http import Http404, HttpResponse, StreamingHttpResponse
-from django.core import serializers as django_serializers
 from django_drf_filepond.parsers import PlainTextParser, UploadChunkParser
 from django_drf_filepond.renderers import PlainTextRenderer
 from django_drf_filepond.views import PatchView, ProcessView
 from rest_framework import mixins, permissions, status, views, viewsets
 from rest_framework.authtoken.models import Token
-from rest_framework.decorators import action
 from rest_framework.authtoken.views import ObtainAuthToken
-from rest_framework.parsers import MultiPartParser
-from rest_framework.response import Response
 from rest_framework.decorators import action
+from rest_framework.parsers import MultiPartParser
 from rest_framework.renderers import JSONRenderer
-import re
+from rest_framework.response import Response
 
 from cosapweb.api import serializers
-from cosapweb.api.models import (
-    Action,
-    File,
-    Project,
-    ProjectFiles,
-    ProjectTask,
-    ProjectSNVs,
-    SNV,
-    ProjectSNVData,
-    ProjectSummary,
-)
+from cosapweb.api.models import (SNV, Action, File, Project, ProjectFiles,
+                                 ProjectSNVData, ProjectSNVs, ProjectSummary,
+                                 ProjectTask)
 from cosapweb.api.permissions import IsOwnerOrDoesNotExist, OnlyAdminToList
 
-from ..common.utils import (
-    get_user_dir,
-    get_project_dir,
-    create_chonky_filemap,
-    convert_file_relative_path_to_absolute_path,
-)
+from ..common.utils import (convert_file_relative_path_to_absolute_path,
+                            create_chonky_filemap, get_project_dir,
+                            get_user_dir)
 from .celery_handlers import submit_cosap_dna_job
 
 USER = get_user_model()
@@ -193,8 +179,7 @@ class ProjectViewSet(viewsets.ModelViewSet):
             status="PENDING",
         )
 
-
-        normal_file_ids = json.loads(request.POST.get("normal_files","[]")) 
+        normal_file_ids = json.loads(request.POST.get("normal_files", "[]"))
         tumor_file_ids = json.loads(request.POST.get("tumor_files", "[]"))
         bed_file_ids = json.loads(request.POST.get("bed_files", "[]"))
 
@@ -252,7 +237,7 @@ class ProjectViewSet(viewsets.ModelViewSet):
             },
             status=status.HTTP_200_OK,
         )
-    
+
     @action(detail=True, methods=["post"])
     def rerun_project(self, request, pk=None):
         project = Project.objects.get(id=pk)
@@ -373,7 +358,11 @@ class FileViewSet(ProcessView, PatchView, viewsets.ViewSet):
             if request.GET.get("sample_type")
             else None
         )
-        file_type = request.GET.get("file_type").upper() if request.GET.get("file_type") else None
+        file_type = (
+            request.GET.get("file_type").upper()
+            if request.GET.get("file_type")
+            else None
+        )
 
         if return_type and (return_type == "projectFileMap"):
             project = Project.objects.get(id=project_id)
@@ -386,20 +375,16 @@ class FileViewSet(ProcessView, PatchView, viewsets.ViewSet):
             return Response(files)
 
         if sample_type:
-            files = File.objects.filter(
-                    user=request.user, sample_type=sample_type)
+            files = File.objects.filter(user=request.user, sample_type=sample_type)
             files = {
-                files[i].uuid: f"{i+1} - {files[i].name}"
-                for i in range(len(files))
+                files[i].uuid: f"{i+1} - {files[i].name}" for i in range(len(files))
             }
             return Response(files)
 
         if file_type:
             files = {
                 file.uuid: f"{file.project.name} - {file.name}"
-                for file in File.objects.filter(
-                    user=request.user, file_type=file_type
-                )
+                for file in File.objects.filter(user=request.user, file_type=file_type)
             }
             return Response(files)
 

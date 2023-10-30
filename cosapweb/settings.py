@@ -13,6 +13,7 @@ https://docs.djangoproject.com/en/4.0/ref/settings/
 import os
 import tempfile
 from pathlib import Path
+
 import sentry_sdk
 from sentry_sdk.integrations.django import DjangoIntegration
 
@@ -31,12 +32,9 @@ DEBUG = os.environ.get("COSAP_DJANGO_DEBUG") == "True"
 
 ALLOWED_HOSTS = ["localhost", os.environ.get("COSAP_DJANGO_HOST")]
 
-CSRF_TRUSTED_ORIGINS=[os.environ.get("COSAP_CORS_ALLOWED_ORIGINS")]
+CSRF_TRUSTED_ORIGINS = [os.environ.get("COSAP_CORS_ALLOWED_ORIGINS")]
 
-CORS_ALLOWED_ORIGINS = [
-    "https://localhost:3000",
-    os.environ.get("COSAP_BIO_HOST")
-    ]
+CORS_ALLOWED_ORIGINS = ["https://localhost:3000", os.environ.get("COSAP_BIO_HOST")]
 
 CORS_ALLOWED_ORIGINS = [os.environ.get("COSAP_BIO_HOST", "http://localhost:3000")]
 CORS_ALLOW_HEADERS = [
@@ -156,7 +154,7 @@ USE_TZ = True
 
 # Stored files
 
-MEDIA_ROOT = os.path.join(BASE_DIR, 'data/')
+MEDIA_ROOT = os.path.join(BASE_DIR, "data/")
 
 DJANGO_DRF_FILEPOND_UPLOAD_TMP = os.path.join(MEDIA_ROOT, "filepond_temp_files")
 DJANGO_DRF_FILEPOND_FILE_STORE_PATH = MEDIA_ROOT
@@ -190,17 +188,15 @@ CELERY_ACCEPT_CONTENT = ["pickle", "json", "msgpack", "yaml"]
 CELERY_SEND_TASK = True
 
 sentry_sdk.init(
-    dsn=os.environ.get("SENTRY_DSN") ,
+    dsn=os.environ.get("SENTRY_DSN"),
     integrations=[
         DjangoIntegration(),
     ],
-
     # Set traces_sample_rate to 1.0 to capture 100%
     # of transactions for performance monitoring.
     # We recommend adjusting this value in production.
     traces_sample_rate=1.0,
-
     # If you wish to associate users to errors (assuming you are using
     # django.contrib.auth) you may enable sending PII data.
-    send_default_pii=True
+    send_default_pii=True,
 )

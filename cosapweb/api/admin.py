@@ -2,8 +2,9 @@ from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
 from django_drf_filepond.models import TemporaryUpload
 
-from .models import (Action, Affiliation, CustomUser, File, Project,
-                     ProjectFiles, ProjectTask, ProjectSNVs, Report, SNV, ProjectSummary)
+from .models import (SNV, Action, Affiliation, CustomUser, File, Project,
+                     ProjectFiles, ProjectSNVs, ProjectSummary, ProjectTask,
+                     Report)
 
 admin.site.register(CustomUser, UserAdmin)
 admin.site.register(Affiliation)
