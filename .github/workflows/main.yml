@@ -20,6 +20,6 @@ jobs:
       - name: connect and pull
         run: | 
           ssh ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}
-          "cd ${{ secrets.WORK_DIR }} && git checkout ${{ secrets.MAIN_BRANCH }} && 
-          git pull && docker compose up -d --build && 
+          "cd ${{ secrets.WORK_DIR }} && git checkout ${{ secrets.MAIN_BRANCH }} && \
+          git pull && docker compose up -d --build && \
           docker compose exec web bash -l -c "python manage.py makemigrations && python manage.py migrate"
