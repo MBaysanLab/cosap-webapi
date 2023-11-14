@@ -185,13 +185,14 @@ class File(models.Model):
         choices=SAMPLE_TYPES, null=True, blank=True, max_length=256
     )
     file = models.FileField(upload_to=user_directory_path)
+    is_demo = models.BooleanField(default=False)
 
     def __str__(self):
         return f"{self.id}-{self.name}"
 
 
 class ProjectFiles(models.Model):
-    project = models.ForeignKey(Project, on_delete=models.CASCADE)
+    project = models.ForeignKey(Project, on_delete=models.SET_NULL, null=True)
     files = models.ManyToManyField(File)
 
     def __str__(self):

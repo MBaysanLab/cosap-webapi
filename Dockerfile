@@ -8,7 +8,6 @@ SHELL [ "/bin/bash", "--login", "-c" ]
 RUN apt update && apt install -y wget git
 
 # Install Miniconda
-# We exclusively support x86_64 at the moment since some packages are not yet available for other architectures.
 WORKDIR /tmp
 # Determine the system type and OS
 RUN uname -m > /tmp/system_type

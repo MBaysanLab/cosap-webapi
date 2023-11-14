@@ -48,9 +48,9 @@ def match_read_pairs(file_list: list) -> list[tuple]:
         match_r2 = re.match(pattern_r2, file_name)
 
         if match_r1:
-            read_1.append((file, match_r1.group(1) + "_1." + match_r1.group(2)))
+            read_1.append((file, file_name))
         elif match_r2:
-            read_2.append((file, match_r2.group(1) + "_2." + match_r2.group(2)))
+            read_2.append((file, file_name))
 
     if len(read_1) != len(read_2):
         raise ValueError("Some pairs are missing.")
@@ -125,6 +125,8 @@ def create_chonky_filemap(dir, project_name):
 
     def walk(dir_path, root_dir_id, root_folder_name):
         for entry in os.scandir(dir_path):
+            if entry.name.startswith("."):
+                continue
             full_path = entry.path
             rel_path = get_relative_to_media_root(entry)
             parent_stats = get_stats(dir_path)

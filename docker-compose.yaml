@@ -1,12 +1,18 @@
 version: "3.9"
-   
+
 services:
   cosap:
     image: itubioinformatics/cosap
     volumes:
-      - ./data/:/webapi/data/
+      - ${COSAP_API_DATA}:/webapi/data/
       - ${COSAP_HG38_BUNDLE}:/cosap_data
-    command: celery -A cosap.celery.celery worker -l info -Q cosap_worker -c 3 -n cosap_worker@%h -Ofair
+    command:
+      [
+        "bash",
+        "-l",
+        "-c",
+        "conda run --no-capture-output -n cosap celery -A cosap.celery.celery worker -l info -Q cosap_worker -c 3 -n cosap_worker@%h -Ofair",
+      ]
     env_file:
       - .env
     working_dir: /
@@ -21,7 +27,13 @@ services:
     restart: unless-stopped
   web:
     build: .
-    command: ["bash", "-l", "-c", "python -u manage.py wait_for_db && python manage.py runserver 0:8000"]
+    command:
+      [
+        "bash",
+        "-l",
+        "-c",
+        "python -u manage.py wait_for_db && python manage.py runserver 0:8000",
+      ]
     volumes:
       - .:/webapi
     ports:

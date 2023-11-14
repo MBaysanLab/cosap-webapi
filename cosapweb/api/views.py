@@ -211,8 +211,8 @@ class ProjectViewSet(viewsets.ModelViewSet):
 
         except Exception as e:
             print(f"Error submitting job: {e}")
-            new_project.status = "FAILED"
-            new_project.save()
+            # new_project.status = "FAILED"
+            # new_project.save()
 
         return HttpResponse(status=status.HTTP_201_CREATED)
 
@@ -257,6 +257,12 @@ class ProjectViewSet(viewsets.ModelViewSet):
 
         return HttpResponse(status=status.HTTP_200_OK)
 
+    @action(detail=True, methods=["post"])
+    def delete_project(self, request, pk=None):
+        project = Project.objects.get(id=pk)
+        project.delete()
+        return HttpResponse(status=status.HTTP_200_OK)
+
 
 class ProjectSNVViewset(viewsets.ViewSet):
     permission_classes = [permissions.IsAuthenticated]
@@ -273,7 +279,7 @@ class ProjectSNVViewset(viewsets.ViewSet):
                     project=project, snv=snv
                 ).allele_frequency
             except Exception as e:
-                variant_dict["af"] = 0.42
+                variant_dict["af"] = -1
 
             all_variants.append(variant_dict)
 
@@ -375,7 +381,7 @@ class FileViewSet(ProcessView, PatchView, viewsets.ViewSet):
             return Response(files)
 
         if sample_type:
-            files = File.objects.filter(user=request.user, sample_type=sample_type)
+            files = File.objects.filter(user=request.user, sample_type=sample_type, is_demo=True)
             files = {
                 files[i].uuid: f"{i+1} - {files[i].name}" for i in range(len(files))
             }
@@ -384,11 +390,11 @@ class FileViewSet(ProcessView, PatchView, viewsets.ViewSet):
         if file_type:
             files = {
                 file.uuid: f"{file.project.name} - {file.name}"
-                for file in File.objects.filter(user=request.user, file_type=file_type)
+                for file in File.objects.filter(user=request.user, file_type=file_type, is_demo=True)
             }
             return Response(files)
 
-        files = [file.filename for file in File.objects.filter(user=request.user)]
+        files = [file.filename for file in File.objects.filter(user=request.user, is_demo=True)]
         return Response(files)
 
     def create(self, request, *args, **kwargs):

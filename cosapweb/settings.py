@@ -154,7 +154,7 @@ USE_TZ = True
 
 # Stored files
 
-MEDIA_ROOT = os.path.join(BASE_DIR, "data/")
+MEDIA_ROOT = os.environ.get("COSAP_API_DATA", os.path.join(BASE_DIR, "data"))
 
 DJANGO_DRF_FILEPOND_UPLOAD_TMP = os.path.join(MEDIA_ROOT, "filepond_temp_files")
 DJANGO_DRF_FILEPOND_FILE_STORE_PATH = MEDIA_ROOT
