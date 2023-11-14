@@ -65,7 +65,7 @@ class Project(models.Model):
         (COMPLETED, "completed"),
         (IN_PROGRESS, "in_progress"),
         (CANCELLED, "cancelled"),
-        (FAILED, "failed")
+        (FAILED, "failed"),
     ]
 
     user = models.ForeignKey(USER, null=True, on_delete=models.SET_NULL)
@@ -132,6 +132,7 @@ class ProjectSNVs(models.Model):
     def __str__(self) -> str:
         return f"{self.project.id}_{self.project.name} - snvs"
 
+
 class ProjectSNVData(models.Model):
     project = models.ForeignKey(Project, null=True, on_delete=models.CASCADE)
     snv = models.ForeignKey(SNV, null=True, on_delete=models.SET_NULL)
@@ -140,44 +141,36 @@ class ProjectSNVData(models.Model):
     def __str__(self) -> str:
         return f"{self.project.id}_{self.project.name} - snv data"
 
+
 class SV(models.Model):
     pass
+
 
 class ProjectSV(models.Model):
     pass
 
+
 class CNV(models.Model):
     pass
+
 
 class ProjectCNV(models.Model):
     pass
 
+
 class GeneFusion(models.Model):
     pass
 
+
 class ProjectGeneFusion(models.Model):
     pass
+
 
 def user_directory_path(instance, filename):
     return os.path.join(f"{instance.user.id}_{instance.user.email}", "files", filename)
 
 
 class File(models.Model):
-
-    FASTQ = "FQ"
-    BAM = "BAM"
-    BED = "BED"
-    VCF = "VCF"
-    TEXT = "TXT"
-    JSON = "JSON"
-    FILE_TYPES = [
-        (FASTQ, "fastq"),
-        (BAM, "bam"),
-        (BED, "bed"),
-        (VCF, "vcf"),
-        (TEXT, "txt"),
-        (JSON, "json"),
-    ]
 
     TUMOR = "TUMOR"
     NORMAL = "NORMAL"
@@ -187,7 +180,7 @@ class File(models.Model):
     uuid = models.CharField(max_length=256, default=uuid.uuid4, editable=True)
     uploaded_at = models.DateTimeField(auto_now_add=True)
     name = models.CharField(max_length=256, blank=True, null=True)
-    file_type = models.CharField(choices=FILE_TYPES, max_length=256)
+    file_type = models.CharField(max_length=64, blank=True, null=True)
     sample_type = models.CharField(
         choices=SAMPLE_TYPES, null=True, blank=True, max_length=256
     )
@@ -197,8 +190,8 @@ class File(models.Model):
         return f"{self.id}-{self.name}"
 
 
-class ProjectFile(models.Model):
-    project = models.ForeignKey(Project, null=True, on_delete=models.CASCADE)
+class ProjectFiles(models.Model):
+    project = models.ForeignKey(Project, on_delete=models.CASCADE)
     files = models.ManyToManyField(File)
 
     def __str__(self):
@@ -249,6 +242,7 @@ class Action(models.Model):
 
     class Meta:
         ordering = ["created_at"]
+
 
 class ProjectTask(models.Model):
     project = models.ForeignKey(Project, on_delete=models.CASCADE)

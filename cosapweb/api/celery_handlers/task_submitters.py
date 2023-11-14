@@ -1,18 +1,18 @@
 import os
 
 from ...celery import celery_app
-from ...common.utils import get_user_dir, match_read_pairs, wait_file_update_complete
-from ..models import Project, ProjectFile
+from ...common.utils import (get_project_dir, match_read_pairs,
+                             wait_file_update_complete)
+from ..models import Project, ProjectFiles
 
 
 def submit_cosap_dna_job(project_id: int):
-
     """
     Takes a Project object and submits a COSAP DNA pipeline job to Celery.
     """
 
     project = Project.objects.get(id=project_id)
-    project_file_obj = ProjectFile.objects.get(project=project)
+    project_file_obj = ProjectFiles.objects.get(project=project)
 
     normal_files = project_file_obj.files.filter(sample_type="NORMAL")
     tumor_files = project_file_obj.files.filter(sample_type="TUMOR")
@@ -22,14 +22,16 @@ def submit_cosap_dna_job(project_id: int):
         else None
     )
 
-    normal_pairs = match_read_pairs([file for file in normal_files])[0]
+    normal_pairs = (
+        match_read_pairs([file for file in normal_files])[0] if normal_files else None
+    )
     tumor_pairs = match_read_pairs([file for file in tumor_files])
 
     mappers = project.algorithms["aligner"]
     variant_callers = project.algorithms["variantCaller"]
     annotators = project.algorithms["variantAnnotator"]
     bam_qc = "qualimap"
-    workdir = os.path.join(get_user_dir(project.user), f"{project.id}_{project.name}")
+    workdir = get_project_dir(project)
     project_type = "somatic" if project.project_type == "SM" else "germline"
 
     for file in normal_files:

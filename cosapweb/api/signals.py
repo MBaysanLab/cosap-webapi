@@ -1,13 +1,14 @@
 import os
-from pathlib import PurePosixPath
 import shutil
+from pathlib import PurePosixPath
+
 from django.conf import settings
 from django.db.models.signals import post_delete, post_save
 from django.dispatch import receiver
 from django_drf_filepond.models import TemporaryUpload, TemporaryUploadChunked
 from rest_framework.authtoken.models import Token
 
-from ..common.utils import get_user_dir, get_user_files_dir
+from ..common.utils import get_project_dir, get_user_files_dir
 from .models import Action, File, Project, Report
 
 
@@ -31,6 +32,17 @@ def auto_delete_file_on_delete(sender, instance, **kwargs):
             os.remove(instance.file.path)
 
 
+@receiver(post_delete, sender=Project)
+def auto_delete_project_dir_on_delete(sender, instance, **kwargs):
+    """
+    Deletes project directory from filesystem
+    when corresponding `Project` object is deleted.
+    """
+    project_dir = get_project_dir(instance)
+    if os.path.isdir(project_dir):
+        shutil.rmtree(project_dir)
+
+
 @receiver(post_save, sender=File)
 def auto_extract_file_extension(sender, instance, created, **kwargs):
     if not created:
@@ -41,11 +53,23 @@ def auto_extract_file_extension(sender, instance, created, **kwargs):
     """
     FILE_EXTENSIONS = {
         "FQ": ["fastq", "fq"],
+        "FA": ["fa", "fasta"],
+        "SAM": ["sam"],
         "BAM": ["bam"],
+        "CRAM": ["cram"],
         "BED": ["bed", "bed6"],
         "VCF": ["vcf"],
-        "TXT": ["txt"],
+        "TXT": ["txt", "tsv", "csv"],
         "JSON": ["json"],
+        "GFF": ["gff", "gff3"],
+        "GTF": ["gtf"],
+        "WIG": ["wig", "bigwig"],
+        "BPK": ["bpk"],
+        "PDB": ["pdb"],
+        "CIF": ["cif"],
+        "BIB": ["bib"],
+        "SRA": ["sra"],
+        "MAF": ["maf"],
     }
 
     if instance.name:
@@ -55,6 +79,8 @@ def auto_extract_file_extension(sender, instance, created, **kwargs):
         for file_type, extensions in FILE_EXTENSIONS.items():
             if len(set(extensions).intersection(set(suffixes))) > 0:
                 instance.file_type = file_type
+            else:
+                instance.file_type = "UNKNOWN"
 
         instance.save()
 
@@ -84,8 +110,9 @@ def auto_create_action(sender, instance, created, **kwargs):
 @receiver(post_delete, sender=TemporaryUploadChunked)
 def save_tmp_upload(sender, instance, **kwargs):
     """
-    Saves temporary upload to the file system.
+    Waits for last post and saves temporary upload to the file system.
     """
+
     tmp_id = instance.upload_id
     tu = TemporaryUpload.objects.get(upload_id=tmp_id)
     upload_file_name = tu.upload_name
@@ -100,5 +127,3 @@ def save_tmp_upload(sender, instance, **kwargs):
     fl.name = upload_file_name
     fl.file = permanent_file_path
     fl.save()
-
-    instance.delete()

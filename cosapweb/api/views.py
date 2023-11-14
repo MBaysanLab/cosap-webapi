@@ -1,6 +1,8 @@
+import base64
 import json
 import mimetypes
 import os
+import re
 import tempfile
 from multiprocessing.pool import ThreadPool
 from pathlib import Path
@@ -9,36 +11,31 @@ from wsgiref.util import FileWrapper
 
 import pysam
 from django.contrib.auth import get_user_model
+from django.core import serializers as django_serializers
 from django.db.models import Q
 from django.db.models.query import QuerySet
 from django.forms.models import model_to_dict
 from django.http import Http404, HttpResponse, StreamingHttpResponse
-from django.core import serializers as django_serializers
 from django_drf_filepond.parsers import PlainTextParser, UploadChunkParser
 from django_drf_filepond.renderers import PlainTextRenderer
 from django_drf_filepond.views import PatchView, ProcessView
 from rest_framework import mixins, permissions, status, views, viewsets
 from rest_framework.authtoken.models import Token
 from rest_framework.authtoken.views import ObtainAuthToken
+from rest_framework.decorators import action
 from rest_framework.parsers import MultiPartParser
+from rest_framework.renderers import JSONRenderer
 from rest_framework.response import Response
-import re
 
 from cosapweb.api import serializers
-from cosapweb.api.models import (
-    Action,
-    File,
-    Project,
-    ProjectFile,
-    ProjectTask,
-    ProjectSNVs,
-    SNV,
-    ProjectSNVData,
-    ProjectSummary,
-)
+from cosapweb.api.models import (SNV, Action, File, Project, ProjectFiles,
+                                 ProjectSNVData, ProjectSNVs, ProjectSummary,
+                                 ProjectTask)
 from cosapweb.api.permissions import IsOwnerOrDoesNotExist, OnlyAdminToList
 
-from ..common.utils import get_user_dir,get_user_files_dir
+from ..common.utils import (convert_file_relative_path_to_absolute_path,
+                            create_chonky_filemap, get_project_dir,
+                            get_user_dir)
 from .celery_handlers import submit_cosap_dna_job
 
 USER = get_user_model()
@@ -74,17 +71,16 @@ class VerifyUserVeiwSet(viewsets.ViewSet):
     authentication_classes = []
     permission_classes = [permissions.AllowAny]
     serializer_class = serializers.UserSerializer
-    
 
     def create(self, request):
-        request_token = (
+        token = (
             request.headers["Authorization"].split()[1]
             if "Authorization" in request.headers
             else None
         )
 
-        if request_token and Token.objects.filter(key=request_token).exists():
-            user = Token.objects.get(key=request_token).user
+        if token and Token.objects.filter(key=token).exists():
+            user = Token.objects.get(key=token).user
             user_serializer = self.serializer_class(user)
             return Response(user_serializer.data, status=status.HTTP_200_OK)
 
@@ -183,11 +179,11 @@ class ProjectViewSet(viewsets.ModelViewSet):
             status="PENDING",
         )
 
-        normal_file_ids = json.loads(request.POST.get("normal_files"))
-        tumor_file_ids = json.loads(request.POST.get("tumor_files"))
-        bed_file_ids = json.loads(request.POST.get("bed_files"))
+        normal_file_ids = json.loads(request.POST.get("normal_files", "[]"))
+        tumor_file_ids = json.loads(request.POST.get("tumor_files", "[]"))
+        bed_file_ids = json.loads(request.POST.get("bed_files", "[]"))
 
-        project_files = ProjectFile.objects.create(project=new_project)
+        project_files = ProjectFiles.objects.create(project=new_project)
 
         for file_id in normal_file_ids:
             file = File.objects.get(uuid=file_id)
@@ -214,6 +210,7 @@ class ProjectViewSet(viewsets.ModelViewSet):
             ProjectTask.objects.create(project=new_project, task_id=task_id)
 
         except Exception as e:
+            print(f"Error submitting job: {e}")
             new_project.status = "FAILED"
             new_project.save()
 
@@ -237,8 +234,28 @@ class ProjectViewSet(viewsets.ModelViewSet):
             {
                 "metadata": project_metadata,
                 "summary": model_to_dict(results),
-            }
+            },
+            status=status.HTTP_200_OK,
         )
+
+    @action(detail=True, methods=["post"])
+    def rerun_project(self, request, pk=None):
+        project = Project.objects.get(id=pk)
+        project.status = "PENDING"
+        project.save()
+
+        try:
+            pool = ThreadPool(processes=1)
+            async_result = pool.apply_async(submit_cosap_dna_job, (project.id,))
+            task_id = async_result.get()
+            ProjectTask.objects.create(project=project, task_id=task_id)
+
+        except Exception as e:
+            print(f"Error submitting job: {e}")
+            project.status = "FAILED"
+            project.save()
+
+        return HttpResponse(status=status.HTTP_200_OK)
 
 
 class ProjectSNVViewset(viewsets.ViewSet):
@@ -263,65 +280,6 @@ class ProjectSNVViewset(viewsets.ViewSet):
         return Response(all_variants)
 
 
-class FileDownloadView(views.APIView):
-    permission_classes = [permissions.IsAuthenticated]
-
-    def get(self, request, path, *args, **kwargs):
-        user = request.user
-        user_files_dir = get_user_files_dir(user)
-        file_path = os.path.join(user_files_dir, path)
-
-        if not os.path.exists(file_path):
-            raise Http404
-        
-        filename = os.path.basename(file_path)
-        response = StreamingHttpResponse(
-            FileWrapper(
-                open(file_path, "rb"),
-            ),
-            content_type=mimetypes.guess_type(file_path)[0],
-        )
-        response["Content-Length"] = os.path.getsize(file_path)
-        response["Content-Disposition"] = f"attachment; filename={filename}"
-        return response
-        
-
-
-# class AligmentLoadView(views.APIView):
-#     permission_classes = [permissions.IsAuthenticated]
-
-#     def build_view_args(filename, region, reference=None, optionArray=None):
-#         args = []
-
-#         if optionArray:
-#             args.extend(optionArray)
-
-#         if reference:
-#             args.append("-T")
-#             args.append(reference)
-
-#         args.append(filename)
-
-#         if region:
-#             args.append(region)
-
-#         return args
-
-#     def get(self, request, path):
-#         user = request.user
-#         user_dir = get_user_dir(user)
-#         file_path = os.path.join(user_dir, path)
-#         if os.path.exists(file_path):
-#             filename = os.path.basename(file_path)
-#             response = StreamingHttpResponse(
-#                 pysam.view(file_path, "chr1:1040655-1040695"),
-#                 content_type=mimetypes.guess_type(file_path)[0],
-#             )
-#             response["Content-Disposition"] = f"attachment; filename=calibrated.sam"
-#             return response
-#         raise Http404
-
-
 class IGVDataView(views.APIView):
     permission_classes = [permissions.IsAuthenticated]
 
@@ -340,25 +298,25 @@ class IGVDataView(views.APIView):
         with open(path, "rb") as f:
             f.seek(offset)
             data = f.read(length)
-            
+
         response = HttpResponse(
-                data,
-                headers={
-                    "Content-Range": f"bytes {offset}-{offset + length - 1}/{size}",
-                },
-                content_type="application/octet-stream",
-            )
+            data,
+            headers={
+                "Content-Range": f"bytes {offset}-{offset + length - 1}/{size}",
+            },
+            content_type="application/octet-stream",
+        )
         response.status_code = 206
 
         return response
 
-    def get(self, request, path):
-        if path.endswith(".bai"):
-            return FileDownloadView().get(request, path)
-        
-        user = request.user
-        user_files_dir = get_user_files_dir(user)
-        file_path = os.path.join(user_files_dir, path)
+    def get(self, request, b64_string):
+        decoded_path = base64.b64decode(b64_string).decode("utf-8")
+
+        if decoded_path.endswith(".bai"):
+            return FileViewSet().download(request, b64_string)
+
+        file_path = convert_file_relative_path_to_absolute_path(decoded_path)
 
         if not os.path.exists(file_path):
             raise Http404
@@ -391,9 +349,45 @@ class ActionViewSet(viewsets.ModelViewSet):
 class FileViewSet(ProcessView, PatchView, viewsets.ViewSet):
     permission_classes = [permissions.IsAuthenticated]
     parser_classes = (MultiPartParser, UploadChunkParser)
-    renderer_classes = (PlainTextRenderer,)
+    renderer_classes = (PlainTextRenderer, JSONRenderer)
 
-    def list(self, request):
+    def list(self, request, project_id=None):
+        return_type = request.GET.get("return_type")
+        sample_type = (
+            request.GET.get("sample_type").upper()
+            if request.GET.get("sample_type")
+            else None
+        )
+        file_type = (
+            request.GET.get("file_type").upper()
+            if request.GET.get("file_type")
+            else None
+        )
+
+        if return_type and (return_type == "projectFileMap"):
+            project = Project.objects.get(id=project_id)
+
+            if not project:
+                return Response(status=status.HTTP_404_NOT_FOUND)
+
+            project_dir = get_project_dir(project)
+            files = create_chonky_filemap(project_dir, project.name)
+            return Response(files)
+
+        if sample_type:
+            files = File.objects.filter(user=request.user, sample_type=sample_type)
+            files = {
+                files[i].uuid: f"{i+1} - {files[i].name}" for i in range(len(files))
+            }
+            return Response(files)
+
+        if file_type:
+            files = {
+                file.uuid: f"{file.project.name} - {file.name}"
+                for file in File.objects.filter(user=request.user, file_type=file_type)
+            }
+            return Response(files)
+
         files = [file.filename for file in File.objects.filter(user=request.user)]
         return Response(files)
 
@@ -417,6 +411,24 @@ class FileViewSet(ProcessView, PatchView, viewsets.ViewSet):
                     user=request.user, uuid=temp_id, sample_type=sample_type
                 )
             return response
+
+    def download(self, request, b64_string):
+        decoded_path = base64.b64decode(b64_string).decode("utf-8")
+        file_path = convert_file_relative_path_to_absolute_path(decoded_path)
+
+        if not os.path.exists(file_path):
+            raise Http404
+
+        filename = os.path.basename(file_path)
+        response = StreamingHttpResponse(
+            FileWrapper(
+                open(file_path, "rb"),
+            ),
+            content_type="application/octet-stream",
+        )
+        response["Content-Length"] = os.path.getsize(file_path)
+        response["Content-Disposition"] = f"attachment; filename={filename}"
+        return response
 
     def patch(self, request, *args, **kwargs):
         return super().patch(request, *args, **kwargs)
