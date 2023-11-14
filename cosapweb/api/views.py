@@ -165,6 +165,8 @@ class ProjectViewSet(viewsets.ModelViewSet):
         queryset = self.queryset
         if isinstance(queryset, QuerySet):
             user = self.request.user
+            if user.is_superuser:
+                return queryset
             queryset = queryset.filter(Q(user=user) | Q(collaborators=user) | Q(is_demo=True))
         return queryset
 
@@ -212,7 +214,6 @@ class ProjectViewSet(viewsets.ModelViewSet):
             ProjectTask.objects.create(project=new_project, task_id=task_id)
 
         except Exception as e:
-            print(e)
             new_project.status = "FAILED"
             new_project.save()
 
