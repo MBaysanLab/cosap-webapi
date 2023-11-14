@@ -26,6 +26,7 @@ from rest_framework.decorators import action
 from rest_framework.parsers import MultiPartParser
 from rest_framework.renderers import JSONRenderer
 from rest_framework.response import Response
+from rest_framework.decorators import api_view
 
 from cosapweb.api import serializers
 from cosapweb.api.models import (SNV, Action, File, Project, ProjectFiles,
@@ -71,6 +72,7 @@ class VerifyUserVeiwSet(viewsets.ViewSet):
     authentication_classes = []
     permission_classes = [permissions.AllowAny]
     serializer_class = serializers.UserSerializer
+    queryset = USER.objects.all()
 
     def create(self, request):
         token = (
