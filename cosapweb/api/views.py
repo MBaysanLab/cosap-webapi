@@ -161,9 +161,9 @@ class ProjectViewSet(viewsets.ModelViewSet):
         queryset = self.queryset
         if isinstance(queryset, QuerySet):
             user = self.request.user
-            queryset = queryset.filter(
-                Q(user=user) | Q(collaborators=user) | Q(is_demo=True)
-            )
+            if user.is_superuser:
+                return queryset
+            queryset = queryset.filter(Q(user=user) | Q(collaborators=user) | Q(is_demo=True))
         return queryset
 
     def create(self, request, *args, **kwargs):

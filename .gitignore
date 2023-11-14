@@ -178,3 +178,4 @@ migrations/
 
 # filepond files
 filepond_temp_files/
+static/

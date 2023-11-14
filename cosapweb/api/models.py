@@ -69,7 +69,7 @@ class Project(models.Model):
     ]
 
     user = models.ForeignKey(USER, null=True, on_delete=models.SET_NULL)
-    collaborators = models.ManyToManyField(USER, blank=True, related_name="projects")
+    collaborators = models.ManyToManyField(USER, related_name="projects", blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     project_type = models.CharField(choices=PROJECT_TYPE_CHOICES, max_length=256)
     name = models.CharField(max_length=256)
