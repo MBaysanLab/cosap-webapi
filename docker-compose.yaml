@@ -25,6 +25,8 @@ services:
       - POSTGRES_USER=${COSAP_POSTGRES_USER}
       - POSTGRES_PASSWORD=${COSAP_POSTGRES_PASSWORD}
     restart: unless-stopped
+    port:
+      - "5432:5432"
   web:
     build: .
     command:
