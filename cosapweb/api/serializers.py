@@ -68,8 +68,9 @@ class RegistrationSerializer(serializers.ModelSerializer):
             first_name=data["first_name"],
             last_name=data["last_name"],
             email=data["email"],
-            password=data["password"],
         )
+        user.set_password(data["password"])
+        user.save()
 
         return user
 
