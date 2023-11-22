@@ -199,7 +199,10 @@ class ProjectFiles(models.Model):
     files = models.ManyToManyField(File)
 
     def __str__(self):
-        return f"{self.project.name}_files"
+        if self.project:
+            return f"{self.project.name}_files"
+        else:
+            return f"{self.id}_files"
 
 
 class Report(models.Model):
