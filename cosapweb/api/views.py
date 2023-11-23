@@ -383,7 +383,7 @@ class FileViewSet(ProcessView, PatchView, viewsets.ViewSet):
             return Response(files)
 
         if sample_type:
-            files = File.objects.filter(Q(user=request.user, sample_type=sample_type) | Q(is_demo=True))
+            files = File.objects.filter((Q(user=request.user) | Q(is_demo=True)), Q(sample_type=sample_type))
             files = {
                 files[i].uuid: f"{i+1} - {files[i].name}" for i in range(len(files))
             }
@@ -392,7 +392,7 @@ class FileViewSet(ProcessView, PatchView, viewsets.ViewSet):
         if file_type:
             files = {
                 file.uuid: f"{file.project.name} - {file.name}"
-                for file in File.objects.filter(Q(user=request.user, file_type=file_type) | Q(is_demo=True))
+                for file in File.objects.filter((Q(user=request.user) | Q(is_demo=True)), Q(file_type=file_type))
             }
             return Response(files)
 
