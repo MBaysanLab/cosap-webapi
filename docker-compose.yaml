@@ -4,8 +4,9 @@ services:
   cosap:
     image: itubioinformatics/cosap
     volumes:
-      - ${COSAP_API_DATA}:/webapi/data/
+      - ./data:/webapi/data/
       - ${COSAP_HG38_BUNDLE}:/cosap_data
+      - /var/run/docker.sock:/var/run/docker.sock
     command:
       [
         "bash",

@@ -160,7 +160,7 @@ class ProjectViewSet(viewsets.ModelViewSet):
         Overridden only to return projects where the requesting user
         is the creator of the project or a collaborator in the project.
         """
-        queryset = self.queryset
+        queryset = self.queryset.all()
         if isinstance(queryset, QuerySet):
             user = self.request.user
             if user.is_superuser:
@@ -212,9 +212,8 @@ class ProjectViewSet(viewsets.ModelViewSet):
             ProjectTask.objects.create(project=new_project, task_id=task_id)
 
         except Exception as e:
-            print(f"Error submitting job: {e}")
-            # new_project.status = "FAILED"
-            # new_project.save()
+            new_project.status = "FAILED"
+            new_project.save()
 
         return HttpResponse(status=status.HTTP_201_CREATED)
 
@@ -230,18 +229,25 @@ class ProjectViewSet(viewsets.ModelViewSet):
             "time": project.created_at,
         }
 
-        results = ProjectSummary.objects.get(project=project)
+        try:
+            results = ProjectSummary.objects.get(project=project)
+        except Exception as e:
+            results = None
 
         return Response(
             {
                 "metadata": project_metadata,
-                "summary": model_to_dict(results),
+                "summary": model_to_dict(results) if results else None,
             },
             status=status.HTTP_200_OK,
         )
 
     @action(detail=True, methods=["post"])
     def rerun_project(self, request, pk=None):
+        # Allow only user that created the project to rerun it
+        if request.user != Project.objects.get(id=pk).user:
+            return HttpResponse(status=status.HTTP_401_UNAUTHORIZED)
+
         project = Project.objects.get(id=pk)
         project.status = "PENDING"
         project.save()
@@ -261,6 +267,9 @@ class ProjectViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=["post"])
     def delete_project(self, request, pk=None):
+        # Allow only user that created the project to delete it
+        if request.user != Project.objects.get(id=pk).user:
+            return HttpResponse(status=status.HTTP_401_UNAUTHORIZED)
         project = Project.objects.get(id=pk)
         project.delete()
         return HttpResponse(status=status.HTTP_200_OK)

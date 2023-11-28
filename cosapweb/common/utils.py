@@ -63,7 +63,10 @@ def match_read_pairs(file_list: list) -> list[tuple]:
 
     pair_list = [(pair[0][0].file.path, pair[1][0].file.path) for pair in pair_list]
     if len(pair_list) == 0:
-        raise ValueError("No pairs found.")
+        raise ValueError(
+            "Fastq files cannot be paired. The filenames should be like: \
+                sample_1.fastq.gz, sample_2.fastq.gz or sample_R1.fastq.gz, sample_R2.fastq.gz"
+        )
 
     return pair_list
 
@@ -110,7 +113,6 @@ def get_relative_to_media_root(path):
 
 
 def create_chonky_filemap(dir, project_name):
-
     """
     Walks directory and returns Chonky file map and root folder id.
     """
